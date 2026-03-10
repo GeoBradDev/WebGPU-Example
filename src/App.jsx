@@ -3,8 +3,8 @@ import { useMapStore } from './store/mapStore.js'
 import { MapView } from './components/MapView.jsx'
 import { LayerPanel } from './components/LayerPanel.jsx'
 import { FeaturePopup } from './components/FeaturePopup.jsx'
-import { useLayerData } from './hooks/useLayerData.js'
-import { LAYERS } from './config/sources.js'
+import { useAIS } from './hooks/useAIS.js'
+import { useADSB } from './hooks/useADSB.js'
 
 function Header() {
   const viewport = useMapStore((s) => s.viewport)
@@ -45,12 +45,13 @@ function Header() {
 export default function App() {
   const { layerVisibility, setLayerVisibility, selectedFeature, setSelectedFeature } = useMapStore()
 
-  const { data: pointsData } = useLayerData(LAYERS.POINTS.typeName)
-  const { data: polygonsData } = useLayerData(LAYERS.POLYGONS.typeName)
+  const { vessels } = useAIS()
+  const { binaryTracks, currentPositions } = useADSB()
 
   const layerData = {
-    points: pointsData?.features ?? [],
-    polygons: polygonsData ?? { type: 'FeatureCollection', features: [] },
+    points: vessels,
+    adsbTracks: binaryTracks,
+    adsbPositions: currentPositions,
   }
 
   return (

@@ -1,13 +1,14 @@
 import { LAYERS } from '../config/sources.js'
 
 const LAYER_COLORS = {
-  points:   'var(--amber)',
-  polygons: 'var(--blue)',
+  points: 'var(--amber)',
+  adsb: 'var(--blue)',
 }
 
 export function LayerPanel({ visibility, onToggle }) {
-  const activeCount = Object.values(visibility).filter(Boolean).length
-  const totalCount = Object.keys(LAYERS).length
+  const layerList = Object.values(LAYERS)
+  const activeCount = layerList.filter(({ id }) => visibility[id] ?? true).length
+  const totalCount = layerList.length
 
   return (
     <aside className="layer-panel">
@@ -16,7 +17,7 @@ export function LayerPanel({ visibility, onToggle }) {
         <span className="panel-indicator" />
       </div>
 
-      {Object.values(LAYERS).map(({ id, label }) => {
+      {layerList.map(({ id, label }) => {
         const active = visibility[id] ?? true
         return (
           <label key={id} className={`layer-row${active ? ' active' : ''}`}>

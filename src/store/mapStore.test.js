@@ -8,7 +8,7 @@ describe('mapStore', () => {
 
   it('has default viewport', () => {
     const { viewport } = useMapStore.getState()
-    expect(viewport.zoom).toBe(4)
+    expect(viewport.zoom).toBe(6)
     expect(typeof viewport.longitude).toBe('number')
     expect(typeof viewport.latitude).toBe('number')
   })
