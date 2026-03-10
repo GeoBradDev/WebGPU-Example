@@ -30,7 +30,7 @@ function Header() {
       </div>
 
       <div className="header-center">
-        <span className="app-title">WORLDVIEW</span>
+        <span className="app-title">WebGPU Groundtruth</span>
       </div>
 
       <div className="header-right">
