@@ -1,0 +1,432 @@
+/* ─── WORLDVIEW — GEOINT Operations Terminal ─── */
+
+:root {
+  --bg-void:       #00070e;
+  --bg-deep:       #020c18;
+  --bg-surface:    #061422;
+  --bg-panel:      rgba(2, 12, 24, 0.94);
+  --accent:        #00ff88;
+  --accent-dim:    #007744;
+  --accent-glow:   rgba(0, 255, 136, 0.10);
+  --amber:         #ffaa00;
+  --amber-dim:     rgba(255, 170, 0, 0.15);
+  --red:           #ff3344;
+  --blue:          #00aaff;
+  --text-bright:   #d4fce8;
+  --text-primary:  #6ec49a;
+  --text-dim:      #2d5a42;
+  --border:        rgba(0, 255, 136, 0.14);
+  --border-active: rgba(0, 255, 136, 0.38);
+  --font-mono:     'Share Tech Mono', 'Courier New', monospace;
+  --font-display:  'Orbitron', 'Share Tech Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+}
+
+/* CRT scanline texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 255, 136, 0.013) 3px,
+    rgba(0, 255, 136, 0.013) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ─── APP SHELL ─── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.app-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── HEADER ─── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  padding: 0 18px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+  gap: 12px;
+}
+
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.45;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-right {
+  justify-content: flex-end;
+}
+
+.header-center {
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: var(--text-bright);
+  text-shadow:
+    0 0 18px rgba(0, 255, 136, 0.55),
+    0 0 40px rgba(0, 255, 136, 0.18);
+  white-space: nowrap;
+}
+
+.classification-badge {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--bg-void);
+  background: var(--accent);
+  padding: 2px 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.header-sep {
+  color: var(--text-dim);
+  font-size: 8px;
+  flex-shrink: 0;
+}
+
+.header-status {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  white-space: nowrap;
+}
+
+.header-status .ok {
+  color: var(--accent);
+}
+
+.header-status .warn {
+  color: var(--amber);
+}
+
+.coord-display {
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.time-display {
+  color: var(--amber);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  white-space: nowrap;
+}
+
+/* ─── MAP VIGNETTE ─── */
+
+.map-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: radial-gradient(
+    ellipse 88% 88% at 50% 50%,
+    transparent 52%,
+    rgba(0, 7, 14, 0.45) 75%,
+    rgba(0, 7, 14, 0.88) 100%
+  );
+}
+
+/* Corner bracket — top-left */
+.map-vignette::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 28px;
+  height: 28px;
+  border-top: 1px solid var(--accent-dim);
+  border-left: 1px solid var(--accent-dim);
+  opacity: 0.7;
+}
+
+/* Corner bracket — bottom-right */
+.map-vignette::after {
+  content: '';
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-bottom: 1px solid var(--accent-dim);
+  border-right: 1px solid var(--accent-dim);
+  opacity: 0.7;
+}
+
+/* ─── LAYER PANEL ─── */
+
+.layer-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 196px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.layer-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+}
+
+.panel-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: blink-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes blink-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+  position: relative;
+}
+
+.layer-row:hover {
+  background: var(--accent-glow);
+}
+
+.layer-row.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+
+.layer-row input[type='checkbox'] {
+  display: none;
+}
+
+.layer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: box-shadow 0.2s;
+}
+
+.layer-row.active .layer-dot {
+  box-shadow: 0 0 8px currentColor;
+}
+
+.layer-label {
+  flex: 1;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  color: var(--text-primary);
+  transition: color 0.15s;
+}
+
+.layer-row.active .layer-label {
+  color: var(--text-bright);
+}
+
+.layer-toggle {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.layer-toggle.on  { color: var(--accent); }
+.layer-toggle.off { color: var(--text-dim); }
+
+.panel-footer {
+  padding: 7px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-stat {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: var(--text-dim);
+}
+
+/* ─── FEATURE POPUP ─── */
+
+.feature-popup {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  width: 288px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-active);
+  z-index: 10;
+  animation: slide-up 0.18s ease-out;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.feature-popup::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--blue));
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.popup-title {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+}
+
+.popup-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: var(--font-mono);
+  padding: 0;
+  line-height: 1;
+}
+
+.popup-close:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.popup-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.popup-table tr {
+  border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+}
+
+.popup-table tr:last-child {
+  border-bottom: none;
+}
+
+.prop-key {
+  padding: 6px 8px 6px 12px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  white-space: nowrap;
+  vertical-align: top;
+  width: 38%;
+}
+
+.prop-val {
+  padding: 6px 12px 6px 0;
+  font-size: 11px;
+  color: var(--text-bright);
+  word-break: break-word;
+  vertical-align: top;
+}
