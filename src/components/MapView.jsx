@@ -2,29 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map from 'react-map-gl/maplibre'
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import { useControl } from 'react-map-gl/maplibre'
+import { luma } from '@luma.gl/core'
+import { WebGPUDevice } from '@luma.gl/webgpu'
 import 'maplibre-gl/dist/maplibre-gl.css'
-
-import { webgpuAdapter } from '@luma.gl/webgpu'
-
 import { buildLayers } from '../layers/index.js'
 import { useMapStore } from '../store/mapStore.js'
 import { BASEMAP_STYLE } from '../config/sources.js'
 import { useGPUCapabilities } from '../hooks/useGPUCapabilities.js'
 import { GPUInfoPanel } from './GPUInfoPanel.jsx'
 
+luma.registerAdapters([WebGPUDevice])
+
 function DeckGLOverlay({ layers }) {
-  const overlay = useControl(
-    () => new MapboxOverlay({
-      interleaved: false,
-      deviceProps: { type: 'webgpu', adapters: [webgpuAdapter] },
-    }),
-    { position: 'top-left' }
-  )
-
-  useEffect(() => {
-    overlay.setProps({ layers })
-  }, [overlay, layers])
-
+  const overlay = useControl(() => new MapboxOverlay({ interleaved: false, device: 'webgpu' }))
+  overlay.setProps({ layers })
   return null
 }
 
@@ -52,7 +43,9 @@ export function MapView({ layerData }) {
   const gpuBase = useGPUCapabilities()
   const frameTime = useFrameTime()
 
-  const activePointCount = layerVisibility.points ? (layerData.points?.length ?? 0) : 0
+  const activePointCount =
+    (layerVisibility.points ? (layerData.points?.length ?? 0) : 0) +
+    (layerVisibility.adsb ? (layerData.adsbPositions?.length ?? 0) : 0)
 
   const capabilities = useMemo(
     () => ({ ...gpuBase, activePointCount, frameTime }),

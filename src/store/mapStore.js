@@ -9,7 +9,7 @@ const initialState = {
   },
   layerVisibility: {
     points: true,
-    polygons: true,
+    adsb: true,
   },
   selectedFeature: null,
 }

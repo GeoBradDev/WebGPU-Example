@@ -14,9 +14,9 @@ describe('FeaturePopup', () => {
 
   it('renders feature properties', () => {
     render(<FeaturePopup feature={feature} onClose={vi.fn()} />)
-    expect(screen.getByText('name')).toBeInTheDocument()
+    expect(screen.getByText('NAME')).toBeInTheDocument()
     expect(screen.getByText('Test Site')).toBeInTheDocument()
-    expect(screen.getByText('status')).toBeInTheDocument()
+    expect(screen.getByText('STATUS')).toBeInTheDocument()
   })
 
   it('calls onClose when close button is clicked', () => {
