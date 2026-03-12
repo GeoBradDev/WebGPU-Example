@@ -8,9 +8,10 @@ const initialState = {
     bearing: 0,
   },
   layerVisibility: {
-    points: true,
-    adsb: true,
+    airports: true,
+    ports: true,
   },
+  stressCount: 0,
   selectedFeature: null,
 }
 
@@ -21,6 +22,7 @@ export const useMapStore = create((set) => ({
     set((state) => ({
       layerVisibility: { ...state.layerVisibility, [layer]: visible },
     })),
+  setStressCount: (count) => set({ stressCount: count }),
   setSelectedFeature: (feature) => set({ selectedFeature: feature }),
 }))
 

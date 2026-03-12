@@ -1,11 +1,20 @@
 import { LAYERS } from '../config/sources.js'
+import { useMapStore } from '../store/mapStore.js'
 
 const LAYER_COLORS = {
-  points: 'var(--amber)',
-  adsb: 'var(--blue)',
+  airports: 'var(--amber)',
+  ports:    'var(--green)',
+}
+
+function formatCount(n) {
+  if (n === 0) return '0 PTS'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M PTS`
+  return `${(n / 1_000).toFixed(0)}K PTS`
 }
 
 export function LayerPanel({ visibility, onToggle }) {
+  const { stressCount, setStressCount } = useMapStore()
+
   const layerList = Object.values(LAYERS)
   const activeCount = layerList.filter(({ id }) => visibility[id] ?? true).length
   const totalCount = layerList.length
@@ -37,6 +46,24 @@ export function LayerPanel({ visibility, onToggle }) {
           </label>
         )
       })}
+
+      <div className="panel-divider" />
+
+      <div className="stress-section">
+        <span className="panel-title">STRESS TEST</span>
+        <div className="stress-row">
+          <input
+            type="range"
+            min={0}
+            max={5000000}
+            step={100000}
+            value={stressCount}
+            onChange={(e) => setStressCount(Number(e.target.value))}
+            className="stress-slider"
+          />
+          <span className="stress-count">{formatCount(stressCount)}</span>
+        </div>
+      </div>
 
       <div className="panel-footer">
         <span className="footer-stat">
