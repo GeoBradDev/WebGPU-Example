@@ -12,6 +12,7 @@
   --amber-dim:     rgba(255, 170, 0, 0.15);
   --red:           #ff3344;
   --blue:          #00aaff;
+  --green:         #00ff8c;
   --text-bright:   #d4fce8;
   --text-primary:  #6ec49a;
   --text-dim:      #2d5a42;
@@ -336,6 +337,64 @@ body::before {
   color: var(--text-dim);
 }
 
+/* ─── STRESS TEST SLIDER ─── */
+
+.panel-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+}
+
+.stress-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.stress-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: var(--text-dim);
+  outline: none;
+  cursor: pointer;
+}
+
+.stress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--blue);
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--blue);
+}
+
+.stress-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--blue);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--blue);
+}
+
+.stress-count {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  color: var(--blue);
+  white-space: nowrap;
+  min-width: 56px;
+  text-align: right;
+}
+
 /* ─── FEATURE POPUP ─── */
 
 .feature-popup {
@@ -480,6 +539,10 @@ body::before {
 
 .gpu-info-val.warn {
   color: var(--amber);
+}
+
+.gpu-info-val.err {
+  color: var(--red);
 }
 
 .gpu-info-sep {

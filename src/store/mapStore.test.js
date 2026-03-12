@@ -8,7 +8,7 @@ describe('mapStore', () => {
 
   it('has default viewport', () => {
     const { viewport } = useMapStore.getState()
-    expect(viewport.zoom).toBe(6)
+    expect(viewport.zoom).toBe(2)
     expect(typeof viewport.longitude).toBe('number')
     expect(typeof viewport.latitude).toBe('number')
   })
@@ -21,10 +21,16 @@ describe('mapStore', () => {
     expect(viewport.longitude).toBe(10)
   })
 
+  it('has default layer visibility for airports and ports', () => {
+    const { layerVisibility } = useMapStore.getState()
+    expect(layerVisibility.airports).toBe(true)
+    expect(layerVisibility.ports).toBe(true)
+  })
+
   it('setLayerVisibility toggles a layer', () => {
     const { setLayerVisibility } = useMapStore.getState()
-    setLayerVisibility('points', false)
-    expect(useMapStore.getState().layerVisibility.points).toBe(false)
+    setLayerVisibility('airports', false)
+    expect(useMapStore.getState().layerVisibility.airports).toBe(false)
   })
 
   it('setSelectedFeature stores feature', () => {
@@ -32,5 +38,16 @@ describe('mapStore', () => {
     const feature = { id: '1', properties: { name: 'Test' } }
     setSelectedFeature(feature)
     expect(useMapStore.getState().selectedFeature).toEqual(feature)
+  })
+
+  it('has default stressCount of 0', () => {
+    const { stressCount } = useMapStore.getState()
+    expect(stressCount).toBe(0)
+  })
+
+  it('setStressCount updates stressCount', () => {
+    const { setStressCount } = useMapStore.getState()
+    setStressCount(500000)
+    expect(useMapStore.getState().stressCount).toBe(500000)
   })
 })

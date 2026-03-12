@@ -3,8 +3,9 @@ import { useMapStore } from './store/mapStore.js'
 import { MapView } from './components/MapView.jsx'
 import { LayerPanel } from './components/LayerPanel.jsx'
 import { FeaturePopup } from './components/FeaturePopup.jsx'
-import { useAIS } from './hooks/useAIS.js'
-import { useADSB } from './hooks/useADSB.js'
+import { useAirports } from './hooks/useAirports.js'
+import { usePorts } from './hooks/usePorts.js'
+import { useStressPoints } from './hooks/useStressPoints.js'
 
 function Header() {
   const viewport = useMapStore((s) => s.viewport)
@@ -43,15 +44,22 @@ function Header() {
 }
 
 export default function App() {
-  const { layerVisibility, setLayerVisibility, selectedFeature, setSelectedFeature } = useMapStore()
+  const {
+    layerVisibility,
+    setLayerVisibility,
+    selectedFeature,
+    setSelectedFeature,
+    stressCount,
+  } = useMapStore()
 
-  const { vessels } = useAIS()
-  const { binaryTracks, currentPositions } = useADSB()
+  const { airports } = useAirports()
+  const { ports } = usePorts()
+  const { stressPoints } = useStressPoints(stressCount)
 
   const layerData = {
-    points: vessels,
-    adsbTracks: binaryTracks,
-    adsbPositions: currentPositions,
+    airports,
+    ports,
+    stressPoints,
   }
 
   return (
