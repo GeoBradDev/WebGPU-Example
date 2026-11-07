@@ -119,3 +119,31 @@ describe('FeaturePopup keyboard and screen reader access', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 })
+
+describe('FeaturePopup focus return when focus has moved elsewhere', () => {
+  function TwoButtonHarness({ feature: f, onClose }) {
+    return (
+      <>
+        <button type="button">Opener</button>
+        <button type="button">Elsewhere</button>
+        <FeaturePopup feature={f} onClose={onClose} />
+      </>
+    )
+  }
+
+  it('leaves focus on a control outside the dialog when Escape closes it', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const { rerender } = render(<TwoButtonHarness feature={null} onClose={onClose} />)
+    const opener = screen.getByRole('button', { name: 'Opener' })
+    const elsewhere = screen.getByRole('button', { name: 'Elsewhere' })
+    opener.focus()
+    rerender(<TwoButtonHarness feature={feature} onClose={onClose} />)
+    expect(screen.getByRole('dialog', { name: 'FEATURE INTEL' })).toHaveFocus()
+    elsewhere.focus()
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledOnce()
+    rerender(<TwoButtonHarness feature={null} onClose={onClose} />)
+    expect(elsewhere).toHaveFocus()
+  })
+})
