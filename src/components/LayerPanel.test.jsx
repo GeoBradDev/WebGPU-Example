@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LayerPanel } from './LayerPanel.jsx'
@@ -190,5 +190,107 @@ describe('LayerPanel keyboard and screen reader access', () => {
     fireEvent.change(slider, { target: { value: '100000' } })
     expect(useMapStore.getState().stressCount).toBe(100000)
     expect(slider).toHaveAttribute('aria-valuetext', '100,000 points')
+  })
+})
+
+function stubMatchMedia(matches) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query) => ({
+      matches: query === '(max-width: 640px)' ? matches : false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  )
+}
+
+describe('LayerPanel on narrow screens', () => {
+  const allOn = { airports: true, ports: true, heatmap: true }
+
+  beforeEach(() => {
+    stubMatchMedia(true)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('renders a collapsed Sensor layers toggle that controls the panel body', () => {
+    const { container } = render(
+      <LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />
+    )
+    const toggle = screen.getByRole('button', { name: 'Sensor layers' })
+    expect(toggle).toHaveAttribute('type', 'button')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    const bodyId = toggle.getAttribute('aria-controls')
+    expect(bodyId).toBeTruthy()
+    const body = container.querySelector(`[id="${bodyId}"]`)
+    expect(body).toBeInTheDocument()
+    expect(body).toHaveAttribute('hidden')
+    expect(container.querySelector('.layer-panel')).toHaveClass('collapsed')
+  })
+
+  it('keeps the layer checkboxes and slider out of the accessibility tree when collapsed', () => {
+    render(<LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />)
+    expect(screen.queryByRole('checkbox', { name: 'Airports layer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: 'Stress test point count' })).not.toBeInTheDocument()
+  })
+
+  it('expands on click and collapses on a second click', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />
+    )
+    const toggle = screen.getByRole('button', { name: 'Sensor layers' })
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('checkbox', { name: 'Airports layer' })).toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Stress test point count' })).toBeInTheDocument()
+    expect(container.querySelector('.layer-panel')).not.toHaveClass('collapsed')
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('checkbox', { name: 'Airports layer' })).not.toBeInTheDocument()
+  })
+
+  it('focuses the toggle first with Tab and toggles with Enter and Space', async () => {
+    const user = userEvent.setup()
+    render(<LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />)
+    await user.tab()
+    const toggle = screen.getByRole('button', { name: 'Sensor layers' })
+    expect(toggle).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await user.keyboard(' ')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.keyboard(' ')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await user.tab()
+    expect(screen.getByRole('checkbox', { name: 'Airports layer' })).toHaveFocus()
+  })
+})
+
+describe('LayerPanel on wide screens', () => {
+  const allOn = { airports: true, ports: true, heatmap: true }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('renders no toggle and shows the checkboxes when the query does not match', () => {
+    stubMatchMedia(false)
+    const { container } = render(
+      <LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />
+    )
+    expect(screen.queryByRole('button', { name: 'Sensor layers' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Airports layer' })).toBeInTheDocument()
+    expect(container.querySelector('.layer-panel')).not.toHaveClass('collapsed')
+  })
+
+  it('renders no toggle and shows the checkboxes without matchMedia', () => {
+    vi.stubGlobal('matchMedia', undefined)
+    render(<LayerPanel visibility={allOn} onToggle={vi.fn()} heatmapSupported={true} />)
+    expect(screen.queryByRole('button', { name: 'Sensor layers' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Airports layer' })).toBeInTheDocument()
   })
 })
