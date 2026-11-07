@@ -56,3 +56,7 @@ Domain skills:
 - Criteria 5 and 6: file review.
 - Criterion 7: `grep` of `useGPUCompute.js`.
 - Live drive: `npm run build && npx vite preview`; the map renders; moving the stress slider to a non-zero value shows the point count update in the GPU info panel and points draw; moving back to 0 clears them; no console errors from the change.
+
+## Deviations during implementation
+
+- README data sources: the brief named the bundled `public/data/ports.geojson` as the NGA World Port Index, but the file itself is Natural Earth `ne_10m_ports` (1,081 features, `name` property, no `PORT_NAME`). The README documents it as Natural Earth (public domain) and notes the mismatch with the comment in `src/config/sources.js`. The comment is left unchanged here because it is out of scope.
