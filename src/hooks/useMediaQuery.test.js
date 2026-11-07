@@ -37,8 +37,8 @@ afterEach(() => {
 })
 
 describe('useMediaQuery', () => {
-  it('treats narrow widths and short landscape heights as narrow', () => {
-    expect(NARROW_QUERY).toBe('(max-width: 640px), (max-height: 500px)')
+  it('treats narrow widths and short landscape phones, not short desktop windows, as narrow', () => {
+    expect(NARROW_QUERY).toBe('(max-width: 640px), (max-width: 1024px) and (max-height: 500px)')
   })
 
   it('returns false when matchMedia is not available', () => {

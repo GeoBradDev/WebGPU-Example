@@ -442,6 +442,8 @@ body::before {
   bottom: 24px;
   left: 20px;
   width: 288px;
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
   background: var(--bg-panel);
   border: 1px solid var(--border-active);
   z-index: 10;
@@ -474,6 +476,15 @@ body::before {
   justify-content: space-between;
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
+  /* Sticky so Close stays visible when the popup scrolls. Opaque --bg-deep is
+     the --bg-panel color without alpha, so rows scroll cleanly under it; the
+     gradient repaints the accent line, which would otherwise scroll away. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, var(--accent), var(--blue)) top / 100% 2px no-repeat,
+    var(--bg-deep);
 }
 
 .popup-title {
@@ -644,7 +655,7 @@ body::before {
 }
 
 /* Keep in sync with NARROW_QUERY in src/hooks/useMediaQuery.js. */
-@media (max-width: 640px), (max-height: 500px) {
+@media (max-width: 640px), (max-width: 1024px) and (max-height: 500px) {
   .app-header {
     flex-wrap: wrap;
     height: auto;
@@ -669,10 +680,14 @@ body::before {
     display: none;
   }
 
+  /* Cap the expanded panel so it stays above the GPU panel (bottom: 40px,
+     up to 45px tall) with a gap, and scroll the rest. */
   .layer-panel {
     top: 12px;
     right: 12px;
     width: min(220px, calc(100vw - 24px));
+    max-height: calc(100% - 108px);
+    overflow-y: auto;
   }
 
   .feature-popup {
@@ -698,18 +713,6 @@ body::before {
   .app-body:has(.feature-popup) .layer-panel {
     max-height: calc(50% - 24px);
     overflow-y: auto;
-  }
-
-  .popup-header {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    /* Opaque --bg-deep is the --bg-panel color without alpha, so rows scroll
-       cleanly under it. The gradient repaints the popup accent line,
-       which would otherwise scroll away with the content. */
-    background:
-      linear-gradient(90deg, var(--accent), var(--blue)) top / 100% 2px no-repeat,
-      var(--bg-deep);
   }
 }
 
