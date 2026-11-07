@@ -119,6 +119,7 @@ body::before {
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 900;
+  display: inline-block;
   letter-spacing: 0.35em;
   color: var(--text-bright);
   text-shadow:
@@ -260,6 +261,37 @@ body::before {
   animation: blink-pulse 2.4s ease-in-out infinite;
 }
 
+.panel-toggle {
+  width: 100%;
+  min-height: 32px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.panel-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.panel-toggle .panel-title {
+  flex: 1;
+}
+
+.panel-chevron {
+  font-size: 8px;
+  color: var(--accent);
+}
+
+.layer-panel.collapsed .panel-toggle {
+  border-bottom: 0;
+}
+
 @keyframes blink-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.25; }
@@ -360,6 +392,8 @@ body::before {
 
 .stress-slider {
   flex: 1;
+  min-width: 0;
+  width: 100%;
   -webkit-appearance: none;
   appearance: none;
   height: 2px;
@@ -396,7 +430,8 @@ body::before {
   letter-spacing: 0.10em;
   color: var(--blue);
   white-space: nowrap;
-  min-width: 56px;
+  flex-shrink: 0;
+  min-width: 64px;
   text-align: right;
 }
 
@@ -521,6 +556,9 @@ body::before {
   font-size: 10px;
   letter-spacing: 0.11em;
   pointer-events: none;
+  max-width: calc(100vw - 32px);
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 
 .gpu-info-panel::before {
@@ -563,6 +601,79 @@ body::before {
 .gpu-info-sep {
   color: var(--text-dim);
   opacity: 0.5;
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (max-width: 1024px) {
+  .coord-display,
+  .header-right .header-sep {
+    display: none;
+  }
+
+  .app-title {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+  }
+
+  .gpu-info-secondary {
+    display: none;
+  }
+
+  /* Keep clear of the 288px popup at left: 20px so the two never overlap. */
+  .gpu-info-panel {
+    max-width: calc(100vw - 340px);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 6px 12px;
+    row-gap: 4px;
+  }
+
+  .header-center {
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  .app-title {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+  }
+
+  .header-status,
+  .coord-display,
+  .header-sep {
+    display: none;
+  }
+
+  .layer-panel {
+    top: 12px;
+    right: 12px;
+    width: min(220px, calc(100vw - 24px));
+  }
+
+  .feature-popup {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 50%;
+    overflow-y: auto;
+    z-index: 20;
+  }
+
+  .gpu-info-panel {
+    max-width: calc(100vw - 32px);
+  }
+
+  .app-body:has(.feature-popup) .gpu-info-panel {
+    display: none;
+  }
 }
 
 /* ─── UTILITIES ─── */
