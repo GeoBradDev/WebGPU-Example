@@ -24,6 +24,8 @@ Domain skills:
 - `vite.config.js`: drop `deck.gl`, `@deck.gl/react` and `@luma.gl/webgpu` from `optimizeDeps.exclude` (packages no longer installed as direct deps); leave the other entries.
 - `src/manifest.test.js` (new): guard test reading `package.json`.
 - Any `src/` file only if the maplibre 6 / react-map-gl upgrade forces an API change (record it here if so).
+- `src/config/maplibreWorker.js` (new) and `src/components/MapView.jsx` (one import): forced by maplibre 6. It locates its web worker from `import.meta.url`, which Vite does not follow, so the first live drive showed `Error: Worker failed to load` twice and a blank basemap (no vector tiles requested). Per the maplibre 6 docs (Installation > Vite, and the v5-to-v6 migration guide "setWorkerUrl() is bundler-only"), the module calls `setWorkerUrl()` with `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url`, and MapView imports it before any map is created.
+- `src/config/maplibreWorker.test.js` (new): build-level regression test (node environment, `vite build` with `write: false`) asserting the bundle emits a `maplibre-gl-worker` file and app code references it. Red before the fix.
 
 ## Order of work
 
@@ -31,7 +33,8 @@ Domain skills:
 2. Edit `package.json`: remove `overrides`; remove the six unused packages; set `vite` `^8.3.6`, `@vitejs/plugin-react` latest (6.x, peer `vite ^8`), `maplibre-gl` `^6.16.0`, `react-map-gl` `^8.1.3` (its `@vis.gl/react-maplibre` 8.1.3 reads the camera via `getTransformLike`, needed because maplibre 6 removed `map.transform`), `@deck.gl/layers` and `@deck.gl/mapbox` `^9.4.1`, `vitest` and `@vitest/ui` latest 4.x (`^4.1.12`). Delete `node_modules` and `package-lock.json` in the worktree, run `npm install` to regenerate the lockfile, then `npm ci` to prove it reproduces.
 3. Update `vite.config.js` optimizeDeps exclude list.
 4. Run `npm audit --omit=dev`; if any critical or high remains, identify the path and resolve it within this issue's scope (version bump of a direct dep), or report BLOCKED if it needs a product decision.
-5. Gate, then live drive. Commit (`build(deps): ...`) with explicit paths.
+5. Commit (`build(deps): ...`) with explicit paths, then gate, then live drive.
+6. (Added after the first live drive) Worker defect: commit `src/config/maplibreWorker.test.js` alone red, then add `src/config/maplibreWorker.js` and import it from `MapView.jsx`; rerun the gate and the live drive.
 
 ## Risks
 
@@ -47,4 +50,5 @@ Domain skills:
 - Criterion 1: `npm audit --omit=dev` output.
 - Criterion 3 (installed tree): `npm ls --depth=0` output.
 - Criterion 5: gate output of `npm ci`, `npm run lint`, `npm test`, `npm run build`.
+- Criterion 6 (worker part): `src/config/maplibreWorker.test.js`.
 - Criterion 6: live drive via `npm run build && npx vite preview`, chrome-devtools screenshot showing basemap tiles plus airport and port points, and console messages list with no new errors.
