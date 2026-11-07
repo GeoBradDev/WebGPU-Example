@@ -7,6 +7,7 @@ export const WORLD_PORTS_URL = '/data/ports.geojson'
 export const LAYERS = {
   AIRPORTS: { id: 'airports', label: 'Airports' },
   PORTS:    { id: 'ports',    label: 'Sea Ports' },
+  HEATMAP:  { id: 'heatmap',  label: 'Heatmap' },
 }
 
 // Free dark vector basemap - no API key required.

@@ -12,7 +12,13 @@ beforeEach(() => {
 
 describe('LayerPanel', () => {
   it('renders a toggle for each layer', () => {
-    render(<LayerPanel visibility={visibility} onToggle={vi.fn()} />)
+    render(
+      <LayerPanel
+        visibility={{ airports: true, ports: true, heatmap: true }}
+        onToggle={vi.fn()}
+        heatmapSupported={true}
+      />
+    )
     Object.values(LAYERS).forEach(({ label }) => {
       expect(screen.getByText(label.toUpperCase())).toBeInTheDocument()
     })
@@ -30,6 +36,50 @@ describe('LayerPanel', () => {
     const firstCheckbox = screen.getAllByRole('checkbox')[0]
     fireEvent.click(firstCheckbox)
     expect(onToggle).toHaveBeenCalledWith('airports', false)
+  })
+
+  it('shows heatmap toggle when heatmapSupported is true', () => {
+    render(
+      <LayerPanel
+        visibility={{ airports: true, ports: true, heatmap: true }}
+        onToggle={vi.fn()}
+        heatmapSupported={true}
+      />
+    )
+    expect(screen.getByText('HEATMAP')).toBeInTheDocument()
+  })
+
+  it('hides heatmap toggle when heatmapSupported is false', () => {
+    render(
+      <LayerPanel
+        visibility={{ airports: true, ports: true, heatmap: true }}
+        onToggle={vi.fn()}
+        heatmapSupported={false}
+      />
+    )
+    expect(screen.queryByText('HEATMAP')).not.toBeInTheDocument()
+  })
+
+  it('shows 3/3 active count when heatmap is supported and all on', () => {
+    render(
+      <LayerPanel
+        visibility={{ airports: true, ports: true, heatmap: true }}
+        onToggle={vi.fn()}
+        heatmapSupported={true}
+      />
+    )
+    expect(screen.getByText(/3\/3/)).toBeInTheDocument()
+  })
+
+  it('shows 2/2 active count when heatmap is not supported', () => {
+    render(
+      <LayerPanel
+        visibility={{ airports: true, ports: true, heatmap: true }}
+        onToggle={vi.fn()}
+        heatmapSupported={false}
+      />
+    )
+    expect(screen.getByText(/2\/2/)).toBeInTheDocument()
   })
 })
 

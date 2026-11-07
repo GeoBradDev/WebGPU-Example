@@ -31,7 +31,7 @@ function Sparkline({ history }) {
 }
 
 export function GPUInfoPanel({ capabilities }) {
-  const { tier, adapterInfo, activePointCount, frameTime, frameHistory, gpuThroughput } = capabilities
+  const { tier, adapterInfo, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } = capabilities
 
   const deviceLabel =
     adapterInfo.device || adapterInfo.description || adapterInfo.vendor || adapterInfo.architecture || 'Unknown'
@@ -68,6 +68,13 @@ export function GPUInfoPanel({ capabilities }) {
       <span className="gpu-info-item">
         <span className="gpu-info-key">COMPUTE</span>
         <span className="gpu-info-val">{gpuThroughput}</span>
+      </span>
+      <span className="gpu-info-sep">|</span>
+      <span className="gpu-info-item">
+        <span className="gpu-info-key">HEATMAP</span>
+        <span className="gpu-info-val">
+          {heatmapComputeMs != null ? `${heatmapComputeMs} ms` : '--'}
+        </span>
       </span>
     </div>
   )

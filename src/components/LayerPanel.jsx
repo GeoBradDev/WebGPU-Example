@@ -4,6 +4,7 @@ import { useMapStore } from '../store/mapStore.js'
 const LAYER_COLORS = {
   airports: 'var(--amber)',
   ports:    'var(--green)',
+  heatmap:  '#ff44ff',
 }
 
 function formatCount(n) {
@@ -12,10 +13,12 @@ function formatCount(n) {
   return `${(n / 1_000).toFixed(0)}K PTS`
 }
 
-export function LayerPanel({ visibility, onToggle }) {
+export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
   const { stressCount, setStressCount } = useMapStore()
 
-  const layerList = Object.values(LAYERS)
+  const layerList = Object.values(LAYERS).filter(
+    ({ id }) => id !== 'heatmap' || heatmapSupported
+  )
   const activeCount = layerList.filter(({ id }) => visibility[id] ?? true).length
   const totalCount = layerList.length
 

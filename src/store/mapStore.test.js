@@ -50,4 +50,9 @@ describe('mapStore', () => {
     setStressCount(500000)
     expect(useMapStore.getState().stressCount).toBe(500000)
   })
+
+  it('initial layerVisibility includes heatmap: true', () => {
+    const state = useMapStore.getInitialState()
+    expect(state.layerVisibility.heatmap).toBe(true)
+  })
 })

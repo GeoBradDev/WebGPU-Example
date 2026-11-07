@@ -4,6 +4,9 @@ vi.mock('@deck.gl/layers', () => ({
   ScatterplotLayer: class {
     constructor(props) { Object.assign(this, { id: props.id, props }) }
   },
+  BitmapLayer: class {
+    constructor(props) { Object.assign(this, { id: props.id, props }) }
+  },
 }))
 
 import { buildLayers } from './index.js'
@@ -12,6 +15,8 @@ const mockAirport = { lon: 10, lat: 20, name: 'Test Airport', type: 'large_airpo
 const mockPort = { lon: 30, lat: 40, name: 'Test Port' }
 
 describe('buildLayers', () => {
+  const mockCanvas = document.createElement('canvas')
+
   it('returns an array', () => {
     const layers = buildLayers(
       { airports: true, ports: true },
@@ -157,5 +162,51 @@ describe('buildLayers', () => {
     )
     const layer = layers.find((l) => l.id === 'stress')
     expect(layer.props.pickable).toBe(false)
+  })
+
+  it('includes heatmap layer when visible and canvas provided', () => {
+    const layers = buildLayers(
+      { airports: false, ports: false, heatmap: true },
+      { airports: [], ports: [], heatmapCanvas: mockCanvas },
+      vi.fn()
+    )
+    expect(layers.map((l) => l.id)).toContain('heatmap')
+  })
+
+  it('heatmap layer is first (renders under points)', () => {
+    const layers = buildLayers(
+      { airports: true, ports: false, heatmap: true },
+      { airports: [mockAirport], ports: [], heatmapCanvas: mockCanvas },
+      vi.fn()
+    )
+    expect(layers[0].id).toBe('heatmap')
+  })
+
+  it('omits heatmap when heatmap visibility is false', () => {
+    const layers = buildLayers(
+      { airports: false, ports: false, heatmap: false },
+      { airports: [], ports: [], heatmapCanvas: mockCanvas },
+      vi.fn()
+    )
+    expect(layers.map((l) => l.id)).not.toContain('heatmap')
+  })
+
+  it('omits heatmap when heatmapCanvas is null', () => {
+    const layers = buildLayers(
+      { airports: false, ports: false, heatmap: true },
+      { airports: [], ports: [], heatmapCanvas: null },
+      vi.fn()
+    )
+    expect(layers.map((l) => l.id)).not.toContain('heatmap')
+  })
+
+  it('heatmap layer has correct bounds', () => {
+    const layers = buildLayers(
+      { airports: false, ports: false, heatmap: true },
+      { airports: [], ports: [], heatmapCanvas: mockCanvas },
+      vi.fn()
+    )
+    const layer = layers.find((l) => l.id === 'heatmap')
+    expect(layer.props.bounds).toEqual([-180, -85.051129, 180, 85.051129])
   })
 })

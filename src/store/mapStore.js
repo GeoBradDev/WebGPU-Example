@@ -10,6 +10,7 @@ const initialState = {
   layerVisibility: {
     airports: true,
     ports: true,
+    heatmap: true,
   },
   stressCount: 0,
   selectedFeature: null,

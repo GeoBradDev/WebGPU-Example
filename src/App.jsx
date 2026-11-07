@@ -6,6 +6,7 @@ import { FeaturePopup } from './components/FeaturePopup.jsx'
 import { useAirports } from './hooks/useAirports.js'
 import { usePorts } from './hooks/usePorts.js'
 import { useStressPoints } from './hooks/useStressPoints.js'
+import { useGPUHeatmap } from './hooks/useGPUHeatmap.js'
 
 function Header() {
   const viewport = useMapStore((s) => s.viewport)
@@ -55,19 +56,21 @@ export default function App() {
   const { airports } = useAirports()
   const { ports } = usePorts()
   const { stressPoints } = useStressPoints(stressCount)
+  const { canvas: heatmapCanvas, computeMs, supported: heatmapSupported } = useGPUHeatmap(airports)
 
   const layerData = {
     airports,
     ports,
     stressPoints,
+    heatmapCanvas,
   }
 
   return (
     <div className="app-shell">
       <Header />
       <div className="app-body">
-        <MapView layerData={layerData} />
-        <LayerPanel visibility={layerVisibility} onToggle={setLayerVisibility} />
+        <MapView layerData={layerData} heatmapComputeMs={computeMs} />
+        <LayerPanel visibility={layerVisibility} onToggle={setLayerVisibility} heatmapSupported={heatmapSupported} />
         <FeaturePopup feature={selectedFeature} onClose={() => setSelectedFeature(null)} />
       </div>
     </div>

@@ -41,7 +41,7 @@ function useFrameTime() {
   return { frameTime, frameHistory }
 }
 
-export function MapView({ layerData }) {
+export function MapView({ layerData, heatmapComputeMs }) {
   const { viewport, setViewport, layerVisibility, setSelectedFeature } = useMapStore()
   const gpuBase = useGPUCapabilities()
   const { frameTime, frameHistory } = useFrameTime()
@@ -53,8 +53,8 @@ export function MapView({ layerData }) {
     (layerData.stressPoints?.length ?? 0)
 
   const capabilities = useMemo(
-    () => ({ ...gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput }),
-    [gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput]
+    () => ({ ...gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
+    [gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
   )
 
   const onFeatureClick = useCallback(

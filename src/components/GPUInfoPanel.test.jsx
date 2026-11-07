@@ -29,7 +29,7 @@ describe('GPUInfoPanel', () => {
 
   it('renders -- when compute unsupported', () => {
     render(<GPUInfoPanel capabilities={base} />)
-    expect(screen.getByText('--')).toBeInTheDocument()
+    expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders sparkline SVG when frameHistory has data', () => {
@@ -57,5 +57,16 @@ describe('GPUInfoPanel', () => {
   it('frame time is red above 33ms', () => {
     const { container } = render(<GPUInfoPanel capabilities={{ ...base, frameTime: 50 }} />)
     expect(container.querySelector('.gpu-info-val.err')).toBeInTheDocument()
+  })
+
+  it('shows HEATMAP stat with computeMs when provided', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, heatmapComputeMs: 42 }} />)
+    expect(screen.getByText('HEATMAP')).toBeInTheDocument()
+    expect(screen.getByText('42 ms')).toBeInTheDocument()
+  })
+
+  it('shows HEATMAP stat as -- when heatmapComputeMs is null', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, heatmapComputeMs: null }} />)
+    expect(screen.getByText('HEATMAP')).toBeInTheDocument()
   })
 })

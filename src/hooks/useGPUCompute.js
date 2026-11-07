@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 
-const COUNT = 16 * 1024 * 1024  // 16M floats = 64MB
+const COUNT = 65535 * 256  // 16,776,960 floats ~64MB, exactly 65535 workgroups
 const WORKGROUP_SIZE = 256
-const WORKGROUPS = COUNT / WORKGROUP_SIZE  // 65536
+const WORKGROUPS = COUNT / WORKGROUP_SIZE  // 65535
 
 const SHADER = `
 @group(0) @binding(0) var<storage, read_write> data: array<f32>;
