@@ -611,22 +611,40 @@ body::before {
     display: none;
   }
 
+  /* Tighter spacing so badge, status, and title clear each other at 641px. */
+  .app-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .header-left,
+  .header-right {
+    gap: 8px;
+  }
+
   .app-title {
     font-size: 14px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.15em;
   }
 
   .gpu-info-secondary {
     display: none;
   }
 
-  /* Keep clear of the 288px popup at left: 20px so the two never overlap. */
+  /* Keep clear of the 288px popup at left: 20px so the two never overlap.
+     Separators are dropped for a column gap so a wrapped row never ends in one. */
   .gpu-info-panel {
     max-width: calc(100vw - 340px);
+    column-gap: 14px;
+  }
+
+  .gpu-info-sep {
+    display: none;
   }
 }
 
-@media (max-width: 640px) {
+/* Keep in sync with NARROW_QUERY in src/hooks/useMediaQuery.js. */
+@media (max-width: 640px), (max-height: 500px) {
   .app-header {
     flex-wrap: wrap;
     height: auto;
@@ -673,6 +691,25 @@ body::before {
 
   .app-body:has(.feature-popup) .gpu-info-panel {
     display: none;
+  }
+
+  /* On short screens the sheet would cover the expanded panel's lower rows;
+     keep the panel above the sheet's tallest extent and let it scroll. */
+  .app-body:has(.feature-popup) .layer-panel {
+    max-height: calc(50% - 24px);
+    overflow-y: auto;
+  }
+
+  .popup-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* Opaque --bg-deep is the --bg-panel color without alpha, so rows scroll
+       cleanly under it. The gradient repaints the popup accent line,
+       which would otherwise scroll away with the content. */
+    background:
+      linear-gradient(90deg, var(--accent), var(--blue)) top / 100% 2px no-repeat,
+      var(--bg-deep);
   }
 }
 

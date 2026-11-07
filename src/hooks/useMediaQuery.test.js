@@ -37,8 +37,8 @@ afterEach(() => {
 })
 
 describe('useMediaQuery', () => {
-  it('exports the narrow screen query', () => {
-    expect(NARROW_QUERY).toBe('(max-width: 640px)')
+  it('treats narrow widths and short landscape heights as narrow', () => {
+    expect(NARROW_QUERY).toBe('(max-width: 640px), (max-height: 500px)')
   })
 
   it('returns false when matchMedia is not available', () => {

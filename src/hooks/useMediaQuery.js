@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
-export const NARROW_QUERY = '(max-width: 640px)'
+export const NARROW_QUERY = '(max-width: 640px), (max-height: 500px)'
 
 function hasMatchMedia() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'

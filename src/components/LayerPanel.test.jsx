@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { LayerPanel } from './LayerPanel.jsx'
 import { LAYERS } from '../config/sources.js'
 import { useMapStore } from '../store/mapStore.js'
+import { NARROW_QUERY } from '../hooks/useMediaQuery.js'
 
 const visibility = { airports: true, ports: true }
 
@@ -197,7 +198,7 @@ function stubMatchMedia(matches) {
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query) => ({
-      matches: query === '(max-width: 640px)' ? matches : false,
+      matches: query === NARROW_QUERY ? matches : false,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
