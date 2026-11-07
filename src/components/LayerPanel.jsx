@@ -13,6 +13,10 @@ function formatCount(n) {
   return `${(n / 1_000).toFixed(0)}K PTS`
 }
 
+function formatValueText(n) {
+  return `${n.toLocaleString('en-US')} points`
+}
+
 export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
   const { stressCount, setStressCount } = useMapStore()
 
@@ -35,15 +39,18 @@ export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
           <label key={id} className={`layer-row${active ? ' active' : ''}`}>
             <input
               type="checkbox"
+              className="visually-hidden"
+              aria-label={`${label} layer`}
               checked={active}
               onChange={(e) => onToggle(id, e.target.checked)}
             />
             <span
               className="layer-dot"
+              aria-hidden="true"
               style={{ background: active ? LAYER_COLORS[id] : 'var(--text-dim)' }}
             />
             <span className="layer-label">{label.toUpperCase()}</span>
-            <span className={`layer-toggle ${active ? 'on' : 'off'}`}>
+            <span className={`layer-toggle ${active ? 'on' : 'off'}`} aria-hidden="true">
               {active ? 'ON' : 'OFF'}
             </span>
           </label>
@@ -63,6 +70,8 @@ export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
             value={stressCount}
             onChange={(e) => setStressCount(Number(e.target.value))}
             className="stress-slider"
+            aria-label="Stress test point count"
+            aria-valuetext={formatValueText(stressCount)}
           />
           <span className="stress-count">{formatCount(stressCount)}</span>
         </div>
