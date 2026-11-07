@@ -50,7 +50,7 @@ Out of scope (documented in the PR): the optional "keyboard path to features" (s
 
 ## Proof
 
-- Criterion 1: LayerPanel test tabs with `user-event` through the panel and asserts focus lands on each checkbox (three with heatmap supported) and then the slider; `user.keyboard(' ')` on a focused checkbox calls `onToggle('airports', false)`; `{ArrowRight}` on the focused slider sets `stressCount` to 100000. FeaturePopup test: Tab reaches the Close button and Enter calls `onClose`. Live drive confirms in a real browser.
+- Criterion 1: LayerPanel test tabs with `user-event` through the panel and asserts focus lands on each checkbox (three with heatmap supported) and then the slider; `user.keyboard(' ')` on a focused checkbox calls `onToggle('airports', false)`; a one-step `change` on the slider sets `stressCount` to 100000 and `aria-valuetext` to "100,000 points" (arrow keys themselves are proven in the live drive; see Deviations). FeaturePopup test: Tab reaches the Close button and Enter calls `onClose`. Live drive confirms in a real browser.
 - Criterion 2: CSS review plus live drive screenshots of the focus ring on a layer row, the slider, and the close button.
 - Criterion 3: `getByRole('checkbox', { name: 'Airports layer' })` (and Sea Ports, Heatmap) with `toBeChecked`; `getByRole('slider', { name: 'Stress test point count' })` with `aria-valuetext` "0 points" and "500,000 points"; `getByRole('dialog', { name: 'FEATURE INTEL' })`; `getByRole('button', { name: 'Close' })`. Live drive reads the accessibility tree.
 - Criterion 4: FeaturePopup tests: on open the dialog has focus; Escape calls `onClose` once; rerender from feature to null returns focus to a button that had focus before open; rerender with a different `onClose` does not move focus back to the dialog; Escape after close does not call `onClose`.
@@ -59,3 +59,5 @@ Out of scope (documented in the PR): the optional "keyboard path to features" (s
 - Live drive: `npm run build && npx vite preview`; Tab from page start reaches Airports, Sea Ports, Heatmap (if WebGPU), the slider; focus ring visible on each; Space toggles a layer and the map updates; arrow keys move the slider; click an airport, popup takes focus, Tab to Close shows a focus ring, Escape closes, focus returns.
 
 ## Deviations during implementation
+
+- Slider arrow key test: `@testing-library/user-event` 14.6.8 has no keydown behavior for `ArrowRight` on `input[type=range]` (only radios and text selection), and jsdom does not step range inputs either, so a `{ArrowRight}` test could never go green from production code. The LayerPanel test instead dispatches the one-step `change` a browser makes on ArrowRight and asserts `stressCount` 100000 and `aria-valuetext` "100,000 points". Real arrow key stepping is verified in the live drive.
