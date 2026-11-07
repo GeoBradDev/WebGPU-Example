@@ -19,7 +19,7 @@ npm audit --omit=dev --audit-level=high
 - JavaScript only (`.js` / `.jsx`). No TypeScript.
 - No emojis in code, comments, docs, or commit messages.
 - No em dashes; use commas, periods, or colons.
-- Keep render pure: no `Math.random`, `performance.now`, or other impure calls during render (`react-hooks/purity` lint rule). Do not add `eslint-disable` comments or loosen lint rules to get green.
+- Keep render pure: no `Math.random`, `performance.now`, or other impure calls during render (`react-hooks/purity` lint rule). Do not add new `eslint-disable` comments or loosen lint rules to get green. The existing ones in `src/components/MapView.jsx` (`react-hooks/purity`) and `src/hooks/useGPUHeatmap.js` (`react-hooks/exhaustive-deps`) are pre-existing.
 - Tests use Vitest + Testing Library in jsdom. jsdom has no WebGL or WebGPU, so mock `MapView` and GPU hooks in component tests.
 
 ## Git exception

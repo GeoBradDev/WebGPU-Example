@@ -11,10 +11,12 @@ afterEach(() => {
 })
 
 describe('useGPUCapabilities', () => {
-  it('starts in the unknown tier', () => {
+  it('starts in the unknown tier', async () => {
     stubGPU(undefined)
     const { result } = renderHook(() => useGPUCapabilities())
     expect(result.current).toEqual({ tier: 'unknown', adapterInfo: {} })
+    // let detection settle inside act so no state update lands after the test
+    await waitFor(() => expect(result.current.tier).not.toBe('unknown'))
   })
 
   it('reports no-webgpu when navigator.gpu is absent', async () => {
