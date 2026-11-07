@@ -1,0 +1,68 @@
+# Plan: Layout breaks on mobile: header text overlaps and panels overflow at 375px (issue #5)
+
+Risk tier: Medium. Responsive layout and a new collapse toggle are stateful UI that jsdom cannot lay out, so the layout is proven only by a live browser drive. It alters existing behavior (header, layer panel, popup, GPU panel) across several files, but touches no API, store contract, data, or security code.
+
+Domain skills:
+- superpowers:test-driven-development: invoke.
+- chrome-devtools-mcp:a11y-debugging: invoke for the live drive (toggle name, aria-expanded, focus ring, Tab order).
+- frontend-design: not applicable because the user fixed the visual direction: keep the existing dark HUD look, only adapt it to narrow screens.
+- vercel-react-best-practices: not applicable because there is no data fetching or render performance work; one small `useSyncExternalStore` media query hook.
+- dataviz, django, fastapi, expo, payments, email: not applicable because none of that is touched.
+
+## Acceptance criteria
+
+1. At 375x812, 768x1024, and 1440x900, no text overlaps: the bounding boxes of the visible header elements (`.classification-badge`, `.header-status`, `.app-title`, `.coord-display`, `.time-display`, and visible `.header-sep`) do not intersect pairwise, and no visible text element in the header, layer panel, GPU panel, or popup is clipped (`scrollWidth <= clientWidth` for `.app-title`, `.stress-count`, `.layer-label`, `.gpu-info-panel`).
+2. At those three sizes, no panel (`.app-header`, `.layer-panel`, `.gpu-info-panel`, `.feature-popup` when open) extends past the viewport: every rect has `left >= 0`, `top >= 0`, `right <= innerWidth`, `bottom <= innerHeight`.
+3. At 375x812 with panels collapsed (layer panel collapsed, no popup), at least 60% of the viewport area is map not covered by the header, layer panel, or GPU panel: `(innerWidth*innerHeight - area(header) - area(layer panel) - area(gpu panel)) / (innerWidth*innerHeight) >= 0.6`.
+4. At 375x812, every control is reachable by touch: the layer toggle button, each layer row, the stress slider, and the popup close button are visible, inside the viewport, and the topmost element at their center (`document.elementFromPoint`) is the control or its descendant.
+5. The stress count readout fits "5.0M PTS" at every width (issue comment): with the slider at 5,000,000, `.stress-count` has `scrollWidth <= clientWidth` and its right edge is inside `.layer-panel`.
+6. Narrow screens (`max-width: 640px`): the layer panel is collapsed by default behind a toggle button in its header. The button is a native `<button type="button">` named "Sensor layers", has `aria-expanded` (false when collapsed, true when open) and `aria-controls` pointing at the panel body id, shows a visible `:focus-visible` outline, and is at least 24x24 CSS px. The panel body uses the `hidden` attribute when collapsed, so its controls leave the Tab order and the accessibility tree. Wide screens (above 640px): no toggle button, the body is always shown, and desktop layout is otherwise unchanged.
+7. The a11y work from #4 is preserved: visually hidden checkboxes named "<Label> layer", focus rings, slider name and value text, popup dialog focus management. All existing tests pass unchanged.
+8. Popup on narrow screens is a full-width bottom sheet (left 0, right 0, bottom 0, `max-height: 50%` of the map area, scrolls internally) and does not overlap the GPU panel (the GPU panel is hidden while a popup is open at that width). At 768px the popup and the GPU panel do not overlap.
+9. GPU panel: constrained to `max-width: calc(100vw - 32px)` and allowed to wrap; at `max-width: 1024px` it reduces to the key stats RENDER, PTS, and FRAME (GPU, COMPUTE, and HEATMAP items and their separators hidden).
+
+Out of scope: contrast and the size of existing touch targets such as the 20px popup close button and the slider thumb (issue #7); any change to `html, body { overflow: hidden }` (with nothing overflowing it no longer hides content).
+
+## Files that change
+
+- `src/hooks/useMediaQuery.js` (new): `export function useMediaQuery(query)` built on `useSyncExternalStore`. Subscribe with `window.matchMedia(query).addEventListener('change', cb)` and remove it on unsubscribe; snapshot is `window.matchMedia(query).matches`; server snapshot `false`. If `window.matchMedia` is not a function (jsdom), return `false` and subscribe to nothing. Also export `NARROW_QUERY = '(max-width: 640px)'`.
+- `src/hooks/useMediaQuery.test.js` (new): see Proof.
+- `src/components/LayerPanel.jsx`: `const narrow = useMediaQuery(NARROW_QUERY)`; `const [open, setOpen] = useState(false)` (the mobile open state; collapsed by default); `const bodyId = useId()`; `const expanded = !narrow || open`. On narrow, render the panel header as `<button type="button" className="panel-header panel-toggle" aria-expanded={open} aria-controls={bodyId} aria-label="Sensor layers" onClick={() => setOpen((o) => !o)}>` containing the existing title span, a chevron `<span className="panel-chevron" aria-hidden="true">` (a down or up triangle by state), and the indicator. On wide, render the existing `<div className="panel-header">` unchanged. Wrap the layer rows, divider, stress section, and footer in `<div id={bodyId} className="panel-body" hidden={!expanded}>`. Add `.layer-panel.collapsed` class when `!expanded` (for styling). Hooks before any early return.
+- `src/components/LayerPanel.test.jsx`: add tests (see Proof); existing tests unchanged (jsdom has no matchMedia, so they render the wide layout).
+- `src/components/GPUInfoPanel.jsx`: add `gpu-info-secondary` class to the GPU, COMPUTE, and HEATMAP items and to the separator before each of them so CSS can hide them. Order of items is unchanged: GPU | RENDER | PTS | FRAME | COMPUTE | HEATMAP. Make the separator between GPU and RENDER secondary too, so that with secondaries hidden it reads RENDER | PTS | FRAME without a leading or trailing separator.
+- `src/components/GPUInfoPanel.test.jsx`: add a test that the GPU, COMPUTE, and HEATMAP items carry `gpu-info-secondary` and RENDER, PTS, FRAME do not.
+- `src/index.css`:
+  - `.stress-slider`: add `min-width: 0; width: 100%` alongside `flex: 1` so the default 129px intrinsic width no longer pushes the readout out. `.stress-count`: `flex-shrink: 0` and `min-width` large enough for "5.0M PTS" (about 64px at 10px with 0.10em spacing; confirm in the drive).
+  - `.gpu-info-panel`: `max-width: calc(100vw - 32px); flex-wrap: wrap; row-gap: 4px`.
+  - `.panel-toggle`: reset button styles (`width: 100%; background: none; border: 0; border-bottom: 1px solid var(--border); color: inherit; font: inherit; cursor: pointer; text-align: left; min-height: 32px`), keep the `.panel-header` look, `:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }`. `.panel-chevron` small, `color: var(--accent)`. `.layer-panel.collapsed .panel-toggle { border-bottom: 0 }`.
+  - `@media (max-width: 1024px)`: `.coord-display` and the header separator before it hidden (give that separator a class or hide all `.header-sep` in header-right), title `font-size: 14px; letter-spacing: 0.2em`, `.gpu-info-secondary { display: none }`.
+  - `@media (max-width: 640px)`: header becomes two rows: `.app-header { flex-wrap: wrap; height: auto; padding: 6px 12px; row-gap: 4px }`, `.header-center { order: -1; flex-basis: 100%; text-align: center }`, `.app-title { font-size: 12px; letter-spacing: 0.15em }`, `.header-status`, `.coord-display`, and every `.header-sep` hidden; badge left, clock right on row 2. `.layer-panel { top: 12px; right: 12px; width: min(220px, calc(100vw - 24px)) }`. `.feature-popup { left: 0; right: 0; bottom: 0; width: auto; max-height: 50%; overflow-y: auto; z-index: 20 }`. `.app-body:has(.feature-popup) .gpu-info-panel { display: none }`. GPU panel `right: 12px; bottom: 36px` if needed to clear the compact attribution.
+  - Exact sizes may be tuned in the live drive against the criteria; any tuning stays inside these selectors.
+- `src/App.jsx`: give the separator in `.header-right` a class `header-sep-coord` (or equivalent) only if CSS needs it to hide just that separator at 1024px. No other change.
+- `README.md`: only if it describes layout or the layer panel in a way the change makes wrong.
+
+## Order of work
+
+1. `useMediaQuery` hook with tests (red, then green).
+2. LayerPanel collapse toggle with tests (red, then green).
+3. GPUInfoPanel secondary class with test.
+4. CSS: stress row fix, GPU panel constraint, toggle styles, then the 1024px and 640px media queries.
+5. Gate.
+6. Live drive and tuning; rerun gate after any tuning.
+
+## Risks
+
+- `:has()` in the popup rule: supported in current Chrome, Safari, and Firefox; if unsupported the GPU panel simply stays visible behind the sheet (sheet has higher z-index).
+- The `hidden` attribute is overridden by any `display` rule on `.panel-body`; do not give `.panel-body` a `display` value, or add `.panel-body[hidden] { display: none }`.
+- The existing Tab-order test in LayerPanel.test.jsx must still pass: on wide screens no toggle button is added before the checkboxes.
+- Changing the header to wrap at 640px increases its height; criterion 3 must still hold.
+- MapLibre's attribution control sits bottom-right; the GPU panel must not cover it (check in the drive).
+- Choosing not to: change the Header component structure, persist the collapsed state, auto-collapse on resize from wide to narrow (the open state is independent and starts collapsed), or close the panel when a layer is toggled.
+
+## Proof
+
+- `src/hooks/useMediaQuery.test.js`: returns false without `matchMedia`; returns the `matches` value from a mocked `matchMedia`; updates when the mock fires `change`; removes its listener on unmount. (criterion 6)
+- `src/components/LayerPanel.test.jsx` new describe "LayerPanel on narrow screens" with `window.matchMedia` stubbed to match `(max-width: 640px)`: renders a button named "Sensor layers" with `aria-expanded="false"` and `aria-controls` equal to the body id; the body is hidden and the "Airports layer" checkbox and slider are not in the accessibility tree; clicking the button sets `aria-expanded="true"` and shows the checkboxes and slider; clicking again collapses; keyboard: Tab focuses the toggle first, Enter and Space toggle it. On wide screens (matchMedia stubbed to not match, and without matchMedia): no toggle button, checkboxes visible. (criteria 6, 7)
+- `src/components/GPUInfoPanel.test.jsx`: secondary class test. (criterion 9)
+- Existing tests unchanged and passing. (criterion 7)
+- Live drive, against `npm run build` and `npm run preview` (and the dev server only if needed to open a popup by importing the store), headless Chrome via a Puppeteer or Playwright script run with npx, at 375x812, 768x1024, 1440x900: record header element rects and pairwise intersections, panel rects against the viewport, `scrollWidth`/`clientWidth` for the text elements in criterion 1, map visible fraction at 375 (criterion 3), `elementFromPoint` for each control at 375 (criterion 4), stress count fit at 5,000,000 (criterion 5), toggle aria-expanded before and after a click, its size and focus outline (criterion 6), popup rects versus GPU panel at 375 and 768 (criterion 8), GPU panel items shown (criterion 9). Report every number.
