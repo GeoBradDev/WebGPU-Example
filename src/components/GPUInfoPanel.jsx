@@ -42,11 +42,11 @@ export function GPUInfoPanel({ capabilities }) {
 
   return (
     <div className="gpu-info-panel">
-      <span className="gpu-info-item">
+      <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">GPU</span>
         <span className="gpu-info-val">{deviceLabel}</span>
       </span>
-      <span className="gpu-info-sep">|</span>
+      <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item">
         <span className="gpu-info-key">RENDER</span>
         <span className={`gpu-info-val ${isWebGPU ? 'ok' : 'warn'}`}>{renderLabel}</span>
@@ -64,13 +64,13 @@ export function GPUInfoPanel({ capabilities }) {
           <Sparkline history={frameHistory} />
         </span>
       </span>
-      <span className="gpu-info-sep">|</span>
-      <span className="gpu-info-item">
+      <span className="gpu-info-sep gpu-info-secondary">|</span>
+      <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">COMPUTE</span>
         <span className="gpu-info-val">{gpuThroughput}</span>
       </span>
-      <span className="gpu-info-sep">|</span>
-      <span className="gpu-info-item">
+      <span className="gpu-info-sep gpu-info-secondary">|</span>
+      <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">HEATMAP</span>
         <span className="gpu-info-val">
           {heatmapComputeMs != null ? `${heatmapComputeMs} ms` : '--'}
