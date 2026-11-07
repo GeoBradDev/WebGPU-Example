@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ['deck.gl', '@deck.gl/react', '@deck.gl/mapbox', '@deck.gl/layers', '@luma.gl/webgpu', '@luma.gl/core'],
+    exclude: ['@deck.gl/mapbox', '@deck.gl/layers', '@luma.gl/core'],
     include: ['earcut'],
   },
   test: {
