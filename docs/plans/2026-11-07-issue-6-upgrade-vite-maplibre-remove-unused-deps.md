@@ -46,7 +46,7 @@ Domain skills:
 
 ## Proof
 
-- Criteria 2, 3, 4 (manifest parts): `src/manifest.test.js`, red before step 2, green after.
+- Criteria 2, 3, 4 (manifest parts): `src/manifest.test.js`, red before step 2, green after. For criterion 4 it only guards the maplibre-gl major (6 or later); the floor above 6.4.0 and the other exact versions are proven by `npm ls --depth=0` and a clean `npm audit --omit=dev`.
 - Criterion 1: `npm audit --omit=dev` output.
 - Criterion 3 (installed tree): `npm ls --depth=0` output.
 - Criterion 5: gate output of `npm ci`, `npm run lint`, `npm test`, `npm run build`.
