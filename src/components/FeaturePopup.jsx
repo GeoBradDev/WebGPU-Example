@@ -23,7 +23,17 @@ export function FeaturePopup({ feature, onClose }) {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      if (returnTarget && returnTarget.isConnected && typeof returnTarget.focus === 'function') {
+      // React has already removed the dialog node here, so focus that was
+      // inside it has fallen back to body. Restore only in that case; if the
+      // user moved focus elsewhere, leave it there.
+      const focusWasInDialog =
+        document.activeElement == null || document.activeElement === document.body
+      if (
+        focusWasInDialog &&
+        returnTarget &&
+        returnTarget.isConnected &&
+        typeof returnTarget.focus === 'function'
+      ) {
         returnTarget.focus()
       }
     }
