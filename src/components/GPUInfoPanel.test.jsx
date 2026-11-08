@@ -70,3 +70,23 @@ describe('GPUInfoPanel', () => {
     expect(screen.getByText('HEATMAP')).toBeInTheDocument()
   })
 })
+describe('GPUInfoPanel secondary stats', () => {
+  it('marks GPU, COMPUTE, and HEATMAP as secondary and keeps RENDER, PTS, FRAME primary', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, heatmapComputeMs: 42 }} />)
+    const item = (key) => screen.getByText(key).closest('.gpu-info-item')
+    for (const key of ['GPU', 'COMPUTE', 'HEATMAP']) {
+      expect(item(key)).toHaveClass('gpu-info-secondary')
+    }
+    for (const key of ['RENDER', 'PTS', 'FRAME']) {
+      expect(item(key)).not.toHaveClass('gpu-info-secondary')
+    }
+  })
+
+  it('leaves only the separators between RENDER, PTS, and FRAME primary', () => {
+    const { container } = render(<GPUInfoPanel capabilities={base} />)
+    const visible = Array.from(container.querySelector('.gpu-info-panel').children)
+      .filter((el) => !el.classList.contains('gpu-info-secondary'))
+      .map((el) => (el.classList.contains('gpu-info-sep') ? '|' : el.querySelector('.gpu-info-key').textContent))
+    expect(visible).toEqual(['RENDER', '|', 'PTS', '|', 'FRAME'])
+  })
+})

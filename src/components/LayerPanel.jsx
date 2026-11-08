@@ -1,5 +1,7 @@
+import { useId, useState } from 'react'
 import { LAYERS } from '../config/sources.js'
 import { useMapStore } from '../store/mapStore.js'
+import { useMediaQuery, NARROW_QUERY } from '../hooks/useMediaQuery.js'
 
 const LAYER_COLORS = {
   airports: 'var(--amber)',
@@ -19,6 +21,10 @@ function formatValueText(n) {
 
 export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
   const { stressCount, setStressCount } = useMapStore()
+  const narrow = useMediaQuery(NARROW_QUERY)
+  const [open, setOpen] = useState(false)
+  const bodyId = useId()
+  const expanded = !narrow || open
 
   const layerList = Object.values(LAYERS).filter(
     ({ id }) => id !== 'heatmap' || heatmapSupported
@@ -27,60 +33,79 @@ export function LayerPanel({ visibility, onToggle, heatmapSupported }) {
   const totalCount = layerList.length
 
   return (
-    <aside className="layer-panel">
-      <div className="panel-header">
-        <span className="panel-title">SENSOR LAYERS</span>
-        <span className="panel-indicator" />
-      </div>
-
-      {layerList.map(({ id, label }) => {
-        const active = visibility[id] ?? true
-        return (
-          <label key={id} className={`layer-row${active ? ' active' : ''}`}>
-            <input
-              type="checkbox"
-              className="visually-hidden"
-              aria-label={`${label} layer`}
-              checked={active}
-              onChange={(e) => onToggle(id, e.target.checked)}
-            />
-            <span
-              className="layer-dot"
-              aria-hidden="true"
-              style={{ background: active ? LAYER_COLORS[id] : 'var(--text-dim)' }}
-            />
-            <span className="layer-label">{label.toUpperCase()}</span>
-            <span className={`layer-toggle ${active ? 'on' : 'off'}`} aria-hidden="true">
-              {active ? 'ON' : 'OFF'}
-            </span>
-          </label>
-        )
-      })}
-
-      <div className="panel-divider" />
-
-      <div className="stress-section">
-        <span className="panel-title">STRESS TEST</span>
-        <div className="stress-row">
-          <input
-            type="range"
-            min={0}
-            max={5000000}
-            step={100000}
-            value={stressCount}
-            onChange={(e) => setStressCount(Number(e.target.value))}
-            className="stress-slider"
-            aria-label="Stress test point count"
-            aria-valuetext={formatValueText(stressCount)}
-          />
-          <span className="stress-count">{formatCount(stressCount)}</span>
+    <aside className={`layer-panel${expanded ? '' : ' collapsed'}`}>
+      {narrow ? (
+        <button
+          type="button"
+          className="panel-header panel-toggle"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          aria-label="Sensor layers"
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span className="panel-title">SENSOR LAYERS</span>
+          <span className="panel-chevron" aria-hidden="true">
+            {open ? '\u25B2' : '\u25BC'}
+          </span>
+          <span className="panel-indicator" />
+        </button>
+      ) : (
+        <div className="panel-header">
+          <span className="panel-title">SENSOR LAYERS</span>
+          <span className="panel-indicator" />
         </div>
-      </div>
+      )}
 
-      <div className="panel-footer">
-        <span className="footer-stat">
-          ACTIVE&nbsp;{activeCount}/{totalCount}
-        </span>
+      <div id={bodyId} className="panel-body" hidden={!expanded}>
+        {layerList.map(({ id, label }) => {
+          const active = visibility[id] ?? true
+          return (
+            <label key={id} className={`layer-row${active ? ' active' : ''}`}>
+              <input
+                type="checkbox"
+                className="visually-hidden"
+                aria-label={`${label} layer`}
+                checked={active}
+                onChange={(e) => onToggle(id, e.target.checked)}
+              />
+              <span
+                className="layer-dot"
+                aria-hidden="true"
+                style={{ background: active ? LAYER_COLORS[id] : 'var(--text-dim)' }}
+              />
+              <span className="layer-label">{label.toUpperCase()}</span>
+              <span className={`layer-toggle ${active ? 'on' : 'off'}`} aria-hidden="true">
+                {active ? 'ON' : 'OFF'}
+              </span>
+            </label>
+          )
+        })}
+
+        <div className="panel-divider" />
+
+        <div className="stress-section">
+          <span className="panel-title">STRESS TEST</span>
+          <div className="stress-row">
+            <input
+              type="range"
+              min={0}
+              max={5000000}
+              step={100000}
+              value={stressCount}
+              onChange={(e) => setStressCount(Number(e.target.value))}
+              className="stress-slider"
+              aria-label="Stress test point count"
+              aria-valuetext={formatValueText(stressCount)}
+            />
+            <span className="stress-count">{formatCount(stressCount)}</span>
+          </div>
+        </div>
+
+        <div className="panel-footer">
+          <span className="footer-stat">
+            ACTIVE&nbsp;{activeCount}/{totalCount}
+          </span>
+        </div>
       </div>
     </aside>
   )
