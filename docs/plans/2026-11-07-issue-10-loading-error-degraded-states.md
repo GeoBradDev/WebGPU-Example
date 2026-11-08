@@ -59,17 +59,21 @@ Domain skills:
 - `src/hooks/useGPUHeatmap.js`: status model, error scopes, device-loss race, adapter-null as unsupported, `attempt` + `retry` replacing the `hasRun` ref semantics (one run per attempt).
 - `src/hooks/useGPUHeatmap.errors.test.js` (new): fake `navigator.gpu` device; stub `GPUBufferUsage`, `GPUMapMode`, `ImageData`, and `HTMLCanvasElement.prototype.getContext`/`toDataURL` as needed; restore after.
 - `src/hooks/useGPUHeatmap.asyncValidation.test.js` (new): the frozen defect reproduction (an asynchronous validation error popped from an error scope must give `status: 'error'` and `canvas: null`), kept in its own self-contained file so the frozen test is never edited while the other heatmap tests grow.
+- `src/hooks/useGPUHeatmap.adapterProbe.test.js` (new, frozen, review finding B): with `navigator.gpu` present and `requestAdapter()` resolving `null` or throwing, the heatmap is `unsupported` even with no airports, stays `unsupported` after retry, and stays `waiting` when the probe finds an adapter.
 - `src/status/systemStatus.js` (new) and `src/status/systemStatus.test.js` (new).
 - `src/store/mapStore.js` (+ `src/store/mapStore.test.js`): `render`, `setRender`, `basemapFailed`, `setBasemapFailed`.
 - `src/components/gpuLabels.js` (+ test): `renderBackendLabel(deviceType, status)` returns `{ text: 'Failed' | 'Lost', ok: false, err: true }` for those statuses; existing behavior unchanged otherwise.
 - `src/components/GPUInfoPanel.jsx`: RENDER class `err` when the label says so; reads `capabilities.renderStatus`.
 - `src/components/MapView.jsx`: `onError` for deck (constructor props), `device.lost` subscription guarded by a device ref cleared on unmount, MapLibre `onError`/`onLoad`, the basemap fallback element; reads/writes the store.
 - `src/components/MapView.health.test.jsx` (new): mocks like `MapView.test.jsx` but the `Map` mock captures its props so the test can fire `onError`/`onLoad`.
+- `src/components/MapView.mapCreate.test.jsx` (new, frozen, review finding C): an `onError` with `target: null` (the map could not be created) shows `MAP UNAVAILABLE` / `WEBGL2 REQUIRED`, not the basemap text, RENDER `Failed`, and sets render `failed` and `basemapFailed` in the store.
+- `src/components/MapView.lateError.test.jsx` (new, frozen, review finding E): a deck `onError` after MapView unmounts is logged but leaves the store's render status unchanged, with or without an initialized device.
 - `src/components/LayerPanel.jsx`: new optional `status` prop `{ airports, ports, heatmap }`, each `{ status, count?, error?, onRetry? }`; per-layer status line (`.layer-status`, text span with a visually hidden `<Label>: ` prefix and `aria-live="polite"`), RETRY button (`.layer-retry`), WebGPU note (`.layer-note`), narrow toggle alert. `heatmapSupported` prop kept. Without `status`, rows render exactly as before.
 - `src/components/LayerPanel.status.test.jsx` (new).
 - `src/App.jsx`: Header takes the derived status; App builds the `status` prop from the hooks and passes `retry` handlers; heatmap `waiting` maps to `NO AIRPORT DATA` (status `blocked` in the panel) when airports failed or loaded with 0 rows.
 - `src/App.test.jsx`: heatmap mock gains `status: 'unsupported'`, `retry`; assertions unchanged.
-- `src/App.status.test.jsx` (new): App-level failure, retry, and header tests.
+- `src/App.status.test.jsx` (new, frozen): the issue reproduction. App-level airports and ports failure (`LOAD FAILED`, `Retry <Label>`, `SYS DEGRADED`), and Retry to a loaded count and `SYS NOMINAL` without remount, with focus on the checkbox.
+- `src/App.emptyAirports.test.jsx` (new, frozen, review finding A): an airports file that loads with 0 rows shows `0 FEATURES` and the heatmap row `NO AIRPORT DATA`, not `AWAITING AIRPORTS`.
 - `src/App.header.test.jsx` (new): header markup (`role="status"`, `aria-live`, level classes, hidden issues text, `title`) and the heatmap, render, and basemap wiring. Split from `src/App.status.test.jsx` because that file is the frozen defect reproduction and is never edited after it is committed red.
 - `src/index.css`: `.header-status .err`, `.layer-status`, `.layer-status-error` text, `.layer-retry` (+ hover, focus-visible), `.layer-note`, `.panel-alert`, `.basemap-fallback`; narrow block: header status visually hidden instead of `display: none`.
 - `src/styles.test.js`: `TEXT_PAIRS` additions, `.layer-retry` target-size and focus-ring tests.
@@ -100,9 +104,10 @@ Domain skills:
 ## Proof
 
 - AC1, AC2, AC3, AC12: `src/App.status.test.jsx` (airports failure shows `LOAD FAILED` + `Retry Airports` + `SYS DEGRADED`; ports likewise; Retry with fetch now succeeding shows `1 FEATURES` and `SYS NOMINAL` with the same App instance and two fetch calls for the URL; focus lands on the checkbox), `src/components/LayerPanel.status.test.jsx`, hook retry tests.
-- AC4: `src/hooks/useGPUHeatmap.asyncValidation.test.js` (frozen defect), `src/hooks/useGPUHeatmap.errors.test.js`.
+- AC4: `src/hooks/useGPUHeatmap.asyncValidation.test.js` (frozen defect: async validation error gives `error`, not `ready`), `src/hooks/useGPUHeatmap.adapterProbe.test.js` (frozen, finding B: null or throwing adapter is `unsupported` without airports), `src/hooks/useGPUHeatmap.errors.test.js` (status model, error scopes, device loss, one run per attempt, retry), `src/App.emptyAirports.test.jsx` (frozen, finding A: `NO AIRPORT DATA` after 0 rows), `src/App.header.test.jsx` (`NO AIRPORT DATA` after airports failed, Retry Heatmap wiring).
+- AC5, AC8 (header markup): `src/App.header.test.jsx` (WebGPU note and `WEBGPU UNAVAILABLE`, `role="status"`, `aria-live`, level classes, hidden issues text, `title`, RENDER LOST and BASEMAP FAILED in the header).
 - AC5, AC10, AC11: `LayerPanel.status.test.jsx`, `src/styles.test.js`.
-- AC6, AC7: `src/components/MapView.health.test.jsx`, `gpuLabels.test.js`.
+- AC6, AC7: `src/components/MapView.health.test.jsx` (Failed, Lost, lost after unmount, post-init error, basemap style failure, tile error, error after load, onLoad clears), `src/components/MapView.mapCreate.test.jsx` (frozen, finding C: map creation failure), `src/components/MapView.lateError.test.jsx` (frozen, finding E: deck error after unmount), `gpuLabels.test.js`, `GPUInfoPanel.test.jsx`.
 - AC8, AC9: `src/status/systemStatus.test.js`, `src/store/mapStore.test.js`.
 - AC13: full gate.
 - Live drive (`npm run build && npm run preview`, Playwright Chromium): with `raw.githubusercontent.com` aborted, AIRPORTS shows `LOAD FAILED` + RETRY and the header `SYS DEGRADED`; unblock, press RETRY: a count and `SYS NOMINAL` (with a WebGPU adapter: `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader`), no navigation (same `performance.timeOrigin`/a window marker survives). With `basemaps.cartocdn.com` aborted: the basemap message and DEGRADED. Screenshots at 375x812 (panel expanded), 768x1024, 1440x900 with an error and a RETRY button visible: nothing overflows the panel, no overlap with the header, GPU panel, or popup; RETRY measures at least 24x24 and shows a focus ring on keyboard focus.
