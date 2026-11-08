@@ -84,7 +84,8 @@ export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
       <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">COMPUTE</span>
         <span className="gpu-info-val" aria-live="polite">{gpuThroughput}</span>
-        {benchmark.supported ? (
+        {/* navigator.gpu can exist with no adapter, so also require the detected tier. */}
+        {benchmark.supported && isWebGPU ? (
           <BenchmarkButton running={benchmark.running} onRun={benchmark.onRun} />
         ) : null}
       </span>
