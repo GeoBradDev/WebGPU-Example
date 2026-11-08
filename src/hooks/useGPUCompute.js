@@ -161,7 +161,7 @@ export function useGPUCompute() {
 
       if (failed) {
         update({ throughput: 'Failed' })
-      } else if (stopRef.current || timings.length < BENCHMARK_DISPATCHES) {
+      } else if (timings.length < BENCHMARK_DISPATCHES) {
         update({ throughput: 'Stopped' })
       } else {
         update({ throughput: formatThroughput(median(timings)) })
