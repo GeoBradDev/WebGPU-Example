@@ -58,15 +58,6 @@ function installGPU({ holdAdapter = false, holdDevice = false, holdWork = false,
   return { gpu, gpuAdapter, device, buffer, queue, pending, adapterGate, deviceGate }
 }
 
-function setVisibility(state) {
-  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
-}
-
-function hide() {
-  setVisibility('hidden')
-  document.dispatchEvent(new Event('visibilitychange'))
-}
-
 afterEach(() => {
   delete navigator.gpu
   delete document.visibilityState

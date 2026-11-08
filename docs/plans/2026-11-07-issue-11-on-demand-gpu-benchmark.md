@@ -66,3 +66,7 @@ Domain skills:
 - AC2, 7, 9, 10: `src/components/GPUInfoPanel.test.jsx`; the tier gate in AC10 (found in the live drive) in `src/components/GPUInfoPanel.benchmarkTier.test.jsx`.
 - AC11: `src/styles.test.js` table and target size; existing suite unchanged.
 - Live drive (build + `npm run preview`, Playwright or chrome-devtools): headless Chromium has no WebGPU, so (a) confirm the no-WebGPU state: no button, COMPUTE `--`; (b) inject a mock `navigator.gpu` with an init script and drive a run by Tab plus Enter and by mouse click: `Running...`, then `~X GB/s est.`, aria-disabled while running, focus ring visible, button box at least 24x24; (c) edge paths with the mock: hide the tab mid-run (override `visibilityState` and dispatch `visibilitychange`) shows `Stopped`; double activation runs once; (d) measure layout at 375x812, 768x1024, 1440x900 per AC11, including the button's box at 1440 and its absence at 768 and 375. If the user's real Chrome (claude-in-chrome) has WebGPU, try a real run and record the number.
+
+## Frozen test changes
+
+- `src/hooks/useGPUCompute.tooFast.test.js`: the unused `setVisibility()` and `hide()` helpers were deleted. Approved by the orchestrator under the user's delegation. Reason: dead code copied from the shared mock helper block broke `npm run lint` (`no-unused-vars`); no assertion changed.
