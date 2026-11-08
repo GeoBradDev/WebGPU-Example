@@ -65,9 +65,10 @@ export function useGPUCompute() {
   }, [release])
 
   const run = useCallback(async () => {
-    if (activeRef.current || !navigator.gpu || isHidden()) return
+    if (activeRef.current || !mountedRef.current || !navigator.gpu || isHidden()) return
     activeRef.current = true
     stopRef.current = false
+    const stopped = () => stopRef.current || !mountedRef.current
 
     const update = (next) => {
       if (mountedRef.current) setState((s) => ({ ...s, ...next }))
@@ -81,12 +82,22 @@ export function useGPUCompute() {
     const res = resourcesRef.current
     try {
       const adapter = await navigator.gpu.requestAdapter()
+      if (stopped()) {
+        update({ throughput: 'Stopped' })
+        return
+      }
       if (!adapter) {
         update({ supported: false, throughput: '--' })
         return
       }
 
+      // Assigned before the stop check so a device that arrives after a stop
+      // is still destroyed in finally.
       res.device = await adapter.requestDevice()
+      if (stopped()) {
+        update({ throughput: 'Stopped' })
+        return
+      }
       const device = res.device
 
       res.buffer = device.createBuffer({
@@ -109,7 +120,7 @@ export function useGPUCompute() {
 
       const timings = []
       for (let k = 0; k < BENCHMARK_DISPATCHES; k++) {
-        if (stopRef.current) break
+        if (stopped()) break
         const t0 = performance.now()
         const encoder = device.createCommandEncoder()
         const pass = encoder.beginComputePass()
