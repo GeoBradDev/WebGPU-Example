@@ -96,8 +96,9 @@ const NO_RESULT = { attempt: -1, status: null, canvas: null, computeMs: null, er
  * Runs once per attempt when airports.length > 0; retry starts a new attempt.
  *
  * status (issue #10):
- *   'unsupported' - navigator.gpu is absent, or requestAdapter() resolved null
- *                   or threw (probed once at mount, and again by each compute)
+ *   'unsupported' - navigator.gpu is absent, the mount-time adapter probe
+ *                   resolved null or threw, or the compute's own
+ *                   requestAdapter() resolved null (a throw there is 'error')
  *   'waiting'     - WebGPU is present and airports are empty
  *   'computing'   - the compute for the current attempt has not finished
  *   'ready'       - finished with no error; canvas and computeMs are set
