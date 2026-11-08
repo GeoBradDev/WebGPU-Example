@@ -12,7 +12,7 @@ Built with React 19, Vite, MapLibre GL (through `react-map-gl`), deck.gl (`@deck
 - **Heatmap layer (WebGPU only):** a two-pass compute shader bins airport positions into a 1024 x 512 grid and colorizes it into a bitmap overlay. It runs once, after the airports load. The layer toggle appears only after that compute succeeds, so it is hidden while airports load, when WebGPU is unavailable, and when the airports fetch or the compute fails.
 - **Stress test:** a slider from 0 to 5,000,000 points in steps of 100,000. Points are generated on the main thread 150 ms after the slider stops moving, then drawn as a deck.gl binary attribute layer.
 - **GPU info panel:** adapter name, render tier (`WebGPU`, `WebGL Fallback`, or `Detecting...`), active point count, frame time with a 60-frame sparkline, compute throughput (a 64 MB storage buffer read and written once per second, reported in GB/s), and heatmap compute time. At 1024px wide or less it shows only the render tier, active point count, and frame time. On small screens (see below) it is hidden while a feature popup is open.
-- **Small screens** (640px wide or less, or up to 1024px wide and 500px tall): the layer panel starts collapsed behind a "Sensor layers" button, the header drops the coordinates and status, and the feature popup opens as a bottom sheet.
+- **Small screens** (640px wide or less, or up to 1024px wide and 500px tall or less): the layer panel starts collapsed behind a "Sensor layers" button, the header drops the coordinates and status, and the feature popup opens as a bottom sheet.
 
 ## Requirements
 
