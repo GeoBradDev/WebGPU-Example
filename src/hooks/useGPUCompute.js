@@ -27,7 +27,10 @@ export function median(values) {
 }
 
 // CPU-timed, so it includes submit and callback latency: an estimate.
+// A coarse timer can report 0, so anything but a positive finite time is
+// shown as Too fast rather than Infinity.
 export function formatThroughput(seconds) {
+  if (!(Number.isFinite(seconds) && seconds > 0)) return 'Too fast'
   return `~${(BYTES_PER_DISPATCH_GB / seconds).toFixed(1)} GB/s est.`
 }
 
