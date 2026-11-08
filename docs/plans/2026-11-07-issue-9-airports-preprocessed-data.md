@@ -51,7 +51,7 @@ Domain skills:
 1. Commit this plan alone (`docs: plan for issue 9`).
 2. TDD the transform: write `scripts/airports-transform.test.js` red, then `scripts/airports-transform.js`, plus the ESLint block. Commit.
 3. Write `scripts/build-airports.mjs` and the npm script; run `npm run data:airports` once (network, local only); commit the script with the generated `public/data/airports.json` and `.meta.json`. Report file size and gzip size (`wc -c`, `gzip -9c | wc -c`).
-4. TDD `decodeAirports` / `selectMajorAirports` and the hook change (tests red, then code). Update `sources.js`. Commit.
+4. TDD `decodeAirports` / `selectMajorAirports` and the hook change (tests red, then code). Update `sources.js`. Switch the App test fetch mocks to `AIRPORTS_DATA_URL` with JSON bodies in the same commit (moved here from step 6 so every commit is green). Commit.
 5. TDD the layer props, then `src/layers/index.js`. Commit.
 6. Update App wiring and App tests. Commit.
 7. Full gate. Then the live drive (below). Measure the long task; if over 50 ms and attributable to airport parsing, add the Worker step (move `decodeAirports` behind a Vite `?worker` that fetches and decodes, keep the hook's retry and cancellation, terminate the worker on cleanup, keep a jsdom-friendly fallback path for tests), edit this plan in the same commit, and re-measure.

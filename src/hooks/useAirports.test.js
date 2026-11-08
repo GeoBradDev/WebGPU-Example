@@ -1,67 +1,71 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { parseAirportCSV, useAirports } from './useAirports.js'
-import { OURAIRPORTS_CSV_URL } from '../config/sources.js'
+import { useAirports } from './useAirports.js'
+import { AIRPORTS_DATA_URL } from '../config/sources.js'
 
-const SAMPLE_CSV = [
-  'id,ident,type,name,latitude_deg,longitude_deg,elevation_ft,continent',
-  '1,KLAX,large_airport,Los Angeles International Airport,33.9425,-118.4081,125,NA',
-  '2,KSFO,large_airport,San Francisco International Airport,37.6188,-122.3750,13,NA',
-  '3,ZZZZ,closed,Closed Airport,0.0,0.0,0,NA',
-  '4,KABC,small_airport,"City of, State Airport",10.0,20.0,100,NA',
-].join('\n')
+const DATA = {
+  version: 1,
+  types: ['large_airport', 'medium_airport', 'small_airport'],
+  lon: [-118.4, -87.9, 20],
+  lat: [33.9, 41.9, 10],
+  name: ['LAX', 'ORD', 'Strip'],
+  type: [0, 1, 2],
+}
 
-describe('parseAirportCSV', () => {
-  it('returns an array', () => {
-    expect(Array.isArray(parseAirportCSV(SAMPLE_CSV))).toBe(true)
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+// Issue #9: airports come from the committed same-origin JSON, not the CSV.
+describe('useAirports data', () => {
+  it('fetches the same-origin airports JSON', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(DATA) })
+    vi.stubGlobal('fetch', fetchMock)
+    const { result } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(AIRPORTS_DATA_URL).toBe('/data/airports.json')
+    expect(fetchMock).toHaveBeenCalledWith(AIRPORTS_DATA_URL)
   })
 
-  it('filters out closed airports', () => {
-    const result = parseAirportCSV(SAMPLE_CSV)
-    expect(result.every((a) => a.type !== 'closed')).toBe(true)
+  it('returns all included airports and the large plus medium subset', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(DATA) }))
+    const { result } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.airports.map((a) => a.name)).toEqual(['LAX', 'ORD', 'Strip'])
+    expect(result.current.majorAirports.map((a) => a.name)).toEqual(['LAX', 'ORD'])
+    expect(result.current.airports[0]).toEqual({ lon: -118.4, lat: 33.9, name: 'LAX', type: 'large_airport' })
   })
 
-  it('parses lon and lat as numbers', () => {
-    const result = parseAirportCSV(SAMPLE_CSV)
-    expect(result[0].lon).toBe(-118.4081)
-    expect(result[0].lat).toBe(33.9425)
+  it('keeps majorAirports referentially stable across renders of the same load', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(DATA) }))
+    const { result, rerender } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const first = result.current.majorAirports
+    rerender()
+    expect(result.current.majorAirports).toBe(first)
   })
 
-  it('parses name and type strings', () => {
-    const result = parseAirportCSV(SAMPLE_CSV)
-    expect(result[0].name).toBe('Los Angeles International Airport')
-    expect(result[0].type).toBe('large_airport')
+  it('sets error, not loaded, when the body is malformed', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ lon: [1] }) }))
+    const { result } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    expect(result.current.error.message).toBe('Airport data is malformed')
+    expect(result.current.loaded).toBe(false)
+    expect(result.current.airports).toEqual([])
+    expect(result.current.majorAirports).toEqual([])
   })
 
-  it('handles quoted names with embedded commas', () => {
-    const result = parseAirportCSV(SAMPLE_CSV)
-    const quoted = result.find((a) => a.name === 'City of, State Airport')
-    expect(quoted).toBeDefined()
-  })
-
-  it('handles RFC 4180 doubled-quote escape inside quoted field', () => {
-    const csv = [
-      'id,ident,type,name,latitude_deg,longitude_deg,elevation_ft',
-      '1,KORD,large_airport,"O""Hare International",41.9786,-87.9048,668',
-    ].join('\n')
-    const result = parseAirportCSV(csv)
-    expect(result[0].name).toBe('O"Hare International')
-  })
-
-  it('filters rows with invalid lon/lat', () => {
-    const csv = [
-      'id,ident,type,name,latitude_deg,longitude_deg,elevation_ft',
-      '1,XBAD,small_airport,Bad Airport,,20.0,0',
-    ].join('\n')
-    const result = parseAirportCSV(csv)
-    expect(result).toHaveLength(0)
+  it('sets error when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, statusText: 'Not Found' }))
+    const { result } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    expect(result.current.error.message).toMatch(/404/)
   })
 })
 
 // Issue #10: a failed load can be retried without a page reload.
 describe('useAirports retry', () => {
-  const CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n1,KLAX,large_airport,LAX,33.9,-118.4\n'
-  const okResponse = () => ({ ok: true, text: () => Promise.resolve(CSV) })
+  const okResponse = () => ({ ok: true, json: () => Promise.resolve(DATA) })
 
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -81,12 +85,12 @@ describe('useAirports retry', () => {
     expect(result.current.error).toBeNull()
     expect(result.current.loaded).toBe(false)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(fetchMock).toHaveBeenNthCalledWith(2, OURAIRPORTS_CSV_URL)
+    expect(fetchMock).toHaveBeenNthCalledWith(2, AIRPORTS_DATA_URL)
 
     await act(async () => release(okResponse()))
     await waitFor(() => expect(result.current.loaded).toBe(true))
     expect(result.current.error).toBeNull()
-    expect(result.current.airports).toHaveLength(1)
+    expect(result.current.airports).toHaveLength(3)
   })
 
   it('keeps retry referentially stable across renders', async () => {
