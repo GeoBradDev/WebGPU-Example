@@ -73,7 +73,9 @@ export default function App() {
 
   const airportsQuery = useAirports()
   const portsQuery = usePorts()
-  const { airports } = airportsQuery
+  // airports: every included airport (heatmap set); majorAirports: large and
+  // medium only, the points drawn and counted in the layer panel (issue #9).
+  const { airports, majorAirports } = airportsQuery
   const { ports } = portsQuery
   const { stressPoints } = useStressPoints(stressCount)
   const heatmap = useGPUHeatmap(airports)
@@ -96,13 +98,13 @@ export default function App() {
   const heatmapPanelStatus =
     heatmap.status === 'waiting' && airportsSettledEmpty ? 'blocked' : heatmap.status
   const layerStatus = {
-    airports: { status: airportsStatus, count: airports.length, error: airportsQuery.error, onRetry: airportsQuery.retry },
+    airports: { status: airportsStatus, count: majorAirports.length, error: airportsQuery.error, onRetry: airportsQuery.retry },
     ports: { status: portsStatus, count: ports.length, error: portsQuery.error, onRetry: portsQuery.retry },
     heatmap: { status: heatmapPanelStatus, error: heatmap.error, onRetry: heatmap.retry },
   }
 
   const layerData = {
-    airports,
+    airports: majorAirports,
     ports,
     stressPoints,
     heatmapCanvas,
