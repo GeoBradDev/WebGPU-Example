@@ -7,8 +7,16 @@ import { useAirports } from './hooks/useAirports.js'
 import { usePorts } from './hooks/usePorts.js'
 import { useStressPoints } from './hooks/useStressPoints.js'
 import { useGPUHeatmap } from './hooks/useGPUHeatmap.js'
+import { deriveSystemStatus } from './status/systemStatus.js'
 
-function Header() {
+const LEVEL_CLASS = { NOMINAL: 'ok', LOADING: 'warn', DEGRADED: 'err' }
+
+function loadStatus({ loaded, error }) {
+  if (error) return 'error'
+  return loaded ? 'loaded' : 'loading'
+}
+
+function Header({ status }) {
   const viewport = useMapStore((s) => s.viewport)
   const [time, setTime] = useState(() => new Date())
 
@@ -27,7 +35,7 @@ function Header() {
         <span className="classification-badge">UNCLASSIFIED</span>
         <span className="header-sep">◆</span>
         <span className="header-status">
-          SYS&nbsp;<span className="ok">NOMINAL</span>
+          SYS&nbsp;<span className={LEVEL_CLASS[status.level]}>{status.level}</span>
         </span>
       </div>
 
@@ -53,10 +61,35 @@ export default function App() {
     stressCount,
   } = useMapStore()
 
-  const { airports } = useAirports()
-  const { ports } = usePorts()
+  const render = useMapStore((s) => s.render)
+  const basemapFailed = useMapStore((s) => s.basemapFailed)
+
+  const airportsQuery = useAirports()
+  const portsQuery = usePorts()
+  const { airports } = airportsQuery
+  const { ports } = portsQuery
   const { stressPoints } = useStressPoints(stressCount)
-  const { canvas: heatmapCanvas, computeMs, supported: heatmapSupported } = useGPUHeatmap(airports)
+  const heatmap = useGPUHeatmap(airports)
+  const { canvas: heatmapCanvas, computeMs, supported: heatmapSupported } = heatmap
+
+  const airportsStatus = loadStatus(airportsQuery)
+  const portsStatus = loadStatus(portsQuery)
+  const systemStatus = deriveSystemStatus({
+    airports: airportsStatus,
+    ports: portsStatus,
+    heatmap: heatmap.status,
+    render: render.status,
+    basemapFailed,
+  })
+
+  // The heatmap waits on airports; once they failed it has nothing to wait for.
+  const heatmapPanelStatus =
+    heatmap.status === 'waiting' && airportsStatus === 'error' ? 'blocked' : heatmap.status
+  const layerStatus = {
+    airports: { status: airportsStatus, count: airports.length, error: airportsQuery.error, onRetry: airportsQuery.retry },
+    ports: { status: portsStatus, count: ports.length, error: portsQuery.error, onRetry: portsQuery.retry },
+    heatmap: { status: heatmapPanelStatus, error: heatmap.error, onRetry: heatmap.retry },
+  }
 
   const layerData = {
     airports,
@@ -67,10 +100,15 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header />
+      <Header status={systemStatus} />
       <div className="app-body">
         <MapView layerData={layerData} heatmapComputeMs={computeMs} />
-        <LayerPanel visibility={layerVisibility} onToggle={setLayerVisibility} heatmapSupported={heatmapSupported} />
+        <LayerPanel
+          visibility={layerVisibility}
+          onToggle={setLayerVisibility}
+          heatmapSupported={heatmapSupported}
+          status={layerStatus}
+        />
         <FeaturePopup feature={selectedFeature} onClose={() => setSelectedFeature(null)} />
       </div>
     </div>
