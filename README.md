@@ -11,13 +11,14 @@ Built with React 19, Vite, MapLibre GL (through `react-map-gl`), deck.gl (`@deck
 - **Sea ports layer:** the bundled ports GeoJSON, drawn as green points. Click a point to see its properties.
 - **Heatmap layer (WebGPU only):** a two-pass compute shader bins airport positions into a 1024 x 512 grid and colorizes it into a bitmap overlay. It runs once, after the airports load. The layer toggle appears only after that compute succeeds, so it is hidden while airports load, when WebGPU is unavailable, and when the airports fetch or the compute fails.
 - **Stress test:** a slider from 0 to 5,000,000 points in steps of 100,000. Points are generated on the main thread 150 ms after the slider stops moving, then drawn as a deck.gl binary attribute layer.
-- **GPU info panel:** adapter name, render tier (`WebGPU`, `WebGL Fallback`, or `Detecting...`), active point count, frame time with a 60-frame sparkline, compute throughput (a 64 MB storage buffer read and written once per second, reported in GB/s), and heatmap compute time.
+- **GPU info panel:** adapter name, render tier (`WebGPU`, `WebGL Fallback`, or `Detecting...`), active point count, frame time with a 60-frame sparkline, compute throughput (a 64 MB storage buffer read and written once per second, reported in GB/s), and heatmap compute time. At 1024px wide or less it shows only the render tier, active point count, and frame time. On small screens (see below) it is hidden while a feature popup is open.
+- **Small screens** (640px wide or less, or up to 1024px wide and 500px tall): the layer panel starts collapsed behind a "Sensor layers" button, the header drops the coordinates and status, and the feature popup opens as a bottom sheet.
 
 ## Requirements
 
 - **Node.js:** current LTS (CI uses `lts/*`). Vite 8 needs Node 20.19+ or 22.12+.
 - **Browser:** any browser with WebGL 2 for the map and point layers. deck.gl draws through WebGL; WebGPU is used only for compute.
-- **WebGPU (optional):** needed for the heatmap and the COMPUTE readout. Use a browser and GPU where `navigator.gpu.requestAdapter()` returns an adapter, for example current Chrome or Edge on desktop. Without it the app still runs: the panel shows `WebGL Fallback`, the heatmap toggle never appears, and COMPUTE shows `--`.
+- **WebGPU (optional):** needed for the heatmap and the COMPUTE readout. Use a browser and GPU where `navigator.gpu.requestAdapter()` returns an adapter, for example current Chrome or Edge on desktop. Without it the app still runs: the panel shows `WebGL Fallback`, the heatmap toggle never appears, and on screens wider than 1024px COMPUTE shows `--`.
 - **Network access:** the basemap style and tiles come from CARTO and the airports CSV comes from GitHub at runtime. The ports data is bundled.
 
 ## Setup from a clean clone
@@ -62,7 +63,7 @@ src/
   components/             MapView (MapLibre + deck.gl), LayerPanel, GPUInfoPanel, FeaturePopup
   config/                 data URLs, layer ids, basemap style, MapLibre worker setup
   hooks/                  data loading (useAirports, usePorts), WebGPU (useGPUCapabilities,
-                          useGPUCompute, useGPUHeatmap), useStressPoints
+                          useGPUCompute, useGPUHeatmap), useStressPoints, useMediaQuery
   layers/index.js         buildLayers(): visibility and data to deck.gl layers
   store/mapStore.js       zustand store: viewport, layer visibility, stress count, selection
 public/data/ports.geojson bundled ports data
