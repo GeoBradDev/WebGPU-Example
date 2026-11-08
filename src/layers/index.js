@@ -1,6 +1,15 @@
 import { ScatterplotLayer, BitmapLayer } from '@deck.gl/layers'
 import { HEATMAP_BOUNDS } from './heatmapProjection.js'
 
+const LARGE_AIRPORT_RADIUS_M = 12000
+const MEDIUM_AIRPORT_RADIUS_M = 6000
+const AIRPORT_RADIUS_MIN_PIXELS = 1.5
+const AIRPORT_RADIUS_MAX_PIXELS = 8
+
+function getAirportRadius(d) {
+  return d.type === 'large_airport' ? LARGE_AIRPORT_RADIUS_M : MEDIUM_AIRPORT_RADIUS_M
+}
+
 /**
  * Builds the deck.gl layer array from current visibility and data state.
  *
@@ -35,8 +44,13 @@ export function buildLayers(layerVisibility, data, onFeatureClick) {
         id: 'airports',
         data: data.airports ?? [],
         getPosition: (d) => [d.lon, d.lat],
-        getRadius: 5,
-        radiusUnits: 'pixels',
+        // Issue #9: size in meters so points grow with zoom; the pixel clamp
+        // keeps them small enough at zoom 2 for basemap labels to stay legible
+        // and big enough at high zoom to click.
+        getRadius: getAirportRadius,
+        radiusUnits: 'meters',
+        radiusMinPixels: AIRPORT_RADIUS_MIN_PIXELS,
+        radiusMaxPixels: AIRPORT_RADIUS_MAX_PIXELS,
         getFillColor: [255, 180, 0, 200],
         pickable: true,
         onClick: ({ object }) => object && onFeatureClick({ properties: object }),

@@ -69,6 +69,33 @@ describe('buildLayers', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
+  // Issue #9: zoom-scaled radius so points do not bury basemap labels at zoom 2.
+  it('airports layer sizes points in meters, clamped in pixels', () => {
+    const layers = buildLayers(
+      { airports: true, ports: false },
+      { airports: [mockAirport], ports: [] },
+      vi.fn()
+    )
+    const { props } = layers.find((l) => l.id === 'airports')
+    expect(props.radiusUnits).toBe('meters')
+    expect(props.radiusMinPixels).toBeGreaterThan(0)
+    expect(props.radiusMaxPixels).toBeGreaterThan(props.radiusMinPixels)
+  })
+
+  it('airports layer draws large airports bigger than medium ones', () => {
+    const layers = buildLayers(
+      { airports: true, ports: false },
+      { airports: [mockAirport], ports: [] },
+      vi.fn()
+    )
+    const { getRadius } = layers.find((l) => l.id === 'airports').props
+    expect(typeof getRadius).toBe('function')
+    const large = getRadius({ ...mockAirport, type: 'large_airport' })
+    const medium = getRadius({ ...mockAirport, type: 'medium_airport' })
+    expect(medium).toBeGreaterThan(0)
+    expect(large).toBeGreaterThan(medium)
+  })
+
   it('includes ports layer when visible', () => {
     const layers = buildLayers(
       { airports: false, ports: true },
