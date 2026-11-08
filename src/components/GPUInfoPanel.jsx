@@ -49,12 +49,13 @@ function BenchmarkButton({ running, onRun }) {
 }
 
 export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
-  const { tier, adapterInfo, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } =
+  const { tier, adapterInfo, renderDevice, renderStatus, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } =
     capabilities
 
   const deviceLabel = gpuDeviceLabel(adapterInfo, renderDevice)
   // RENDER is the backend deck.gl created; the WebGPU tier only gates compute.
-  const render = renderBackendLabel(renderDevice?.type)
+  const render = renderBackendLabel(renderDevice?.type, renderStatus)
+  const renderClass = render.err ? 'err' : render.ok ? 'ok' : 'warn'
   const isWebGPU = tier === 'webgpu'
   const frameClass = frameTime <= 16 ? 'ok' : frameTime <= 33 ? 'warn' : 'err'
 
@@ -69,7 +70,7 @@ export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item">
         <span className="gpu-info-key">RENDER</span>
-        <span className={`gpu-info-val ${render.ok ? 'ok' : 'warn'}`}>{render.text}</span>
+        <span className={`gpu-info-val ${renderClass}`}>{render.text}</span>
       </span>
       <span className="gpu-info-sep">|</span>
       <span className="gpu-info-item">
