@@ -57,6 +57,11 @@ Domain skills:
 7. Full gate. Then the live drive (below). Measure the long task; if over 50 ms and attributable to airport parsing, add the Worker step (move `decodeAirports` behind a Vite `?worker` that fetches and decodes, keep the hook's retry and cancellation, terminate the worker on cleanup, keep a jsdom-friendly fallback path for tests), edit this plan in the same commit, and re-measure.
 8. README and comment updates. Commit.
 
+Implementation notes (recorded during the work):
+- Step 8 (README) was committed before step 7 so the gate and live drive cover the final tree.
+- Radius values kept at the starting values (large 12000 m, medium 6000 m, `radiusMinPixels: 1.5`, `radiusMaxPixels: 8`): at zoom 2 (1440 x 900, all layers, heatmap READY) country labels stay legible, and at zoom 6 points are clickable (Frankfurt Main popup opened).
+- Worker step not taken. Headless Chrome 157, SwiftShader, production preview: the app's `res.json()` on `/data/airports.json` takes about 18 to 22 ms including the body read, and an in-page `JSON.parse` plus decode of the real file takes about 5 to 8 ms. Long tasks over 50 ms do exist (about 60 to 160 ms), but with the airports response held 5 s they start only after `res.json()` has resolved, a CPU profile puts 1.7 ms of them in `decodeAirports` and `selectMajorAirports` and the rest in native WebGL work around deck.gl render frames, and with the airports and heatmap layers unticked (data still fetched, parsed, decoded, and the heatmap computed) no long task follows the airports response. They come from deck.gl's first draw of the layers and from MapLibre and deck init, not from parsing.
+
 ## Risks
 
 - A quoted newline in an upstream name would break a line-based parser: the parser works on the whole text and is tested for it.
