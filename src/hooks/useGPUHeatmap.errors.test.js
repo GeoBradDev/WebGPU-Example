@@ -88,7 +88,7 @@ describe('useGPUHeatmap status', () => {
     const { result } = renderHook(() => useGPUHeatmap([]))
     expect(result.current.status).toBe('waiting')
     expect(result.current.supported).toBe(true)
-    expect(mock.gpu.requestAdapter).not.toHaveBeenCalled()
+    expect(mock.adapter.requestDevice).not.toHaveBeenCalled()
   })
 
   it('is computing until the compute finishes, then ready with a canvas and computeMs', async () => {
@@ -151,7 +151,7 @@ describe('useGPUHeatmap status', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'))
     rerender({ a: [...AIRPORTS, { lon: 1, lat: 1 }] })
     expect(result.current.status).toBe('ready')
-    expect(mock.gpu.requestAdapter).toHaveBeenCalledTimes(1)
+    expect(mock.adapter.requestDevice).toHaveBeenCalledTimes(1)
   })
 
   it('re-runs after an error on retry and keeps retry stable', async () => {
@@ -163,7 +163,7 @@ describe('useGPUHeatmap status', () => {
     act(() => result.current.retry())
     expect(result.current.status).toBe('computing')
     await waitFor(() => expect(result.current.status).toBe('ready'))
-    expect(mock.gpu.requestAdapter).toHaveBeenCalledTimes(2)
+    expect(mock.adapter.requestDevice).toHaveBeenCalledTimes(2)
     expect(result.current.canvas).toBe('data:image/png;base64,HEATMAP')
     expect(result.current.retry).toBe(first)
   })
