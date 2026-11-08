@@ -153,6 +153,10 @@ export function useGPUCompute() {
         timings.push((performance.now() - t0) / 1000)
       }
 
+      // The loss can settle together with (or after) a work-done promise, so
+      // the race may not have seen it. Any loss but our own destroy fails.
+      if (lostReason !== null && lostReason !== 'destroyed') failed = true
+
       if (lostReason === null) {
         const validationError = await device.popErrorScope()
         const oomError = await device.popErrorScope()
