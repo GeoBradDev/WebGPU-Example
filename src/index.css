@@ -66,6 +66,9 @@ body::before {
   flex: 1;
   position: relative;
   overflow: hidden;
+  /* clip, unlike hidden, is not a scroll container, so focusing a dialog that
+     briefly pokes past the edge (popup slide-up) cannot scroll the map area. */
+  overflow: clip;
   min-height: 0;
 }
 
@@ -698,6 +701,14 @@ body::before {
     max-height: 50%;
     overflow-y: auto;
     z-index: 20;
+    /* The sheet sits at bottom: 0, so a translate would push it past the
+       map area; fade only. */
+    animation-name: fade-in;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
   .gpu-info-panel {
