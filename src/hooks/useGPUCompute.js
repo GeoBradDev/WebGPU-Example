@@ -145,23 +145,21 @@ export function useGPUCompute() {
         pass.end()
         device.queue.submit([encoder.finish()])
         const outcome = await Promise.race([device.queue.onSubmittedWorkDone(), lost])
-        if (outcome === LOST) {
-          // 'destroyed' is our own release on unmount, so it counts as a stop.
-          failed = lostReason !== 'destroyed'
-          break
-        }
+        // lostReason is set before the race sees LOST; it is judged after the loop.
+        if (outcome === LOST) break
         timings.push((performance.now() - t0) / 1000)
       }
-
-      // The loss can settle together with (or after) a work-done promise, so
-      // the race may not have seen it. Any loss but our own destroy fails.
-      if (lostReason !== null && lostReason !== 'destroyed') failed = true
 
       if (lostReason === null) {
         const validationError = await device.popErrorScope()
         const oomError = await device.popErrorScope()
         if (validationError || oomError) failed = true
       }
+
+      // Checked last: the loss can settle together with or after a work-done
+      // promise, or while the scopes are popped (they resolve null on a lost
+      // device). Any loss but our own destroy on unmount fails the run.
+      if (lostReason !== null && lostReason !== 'destroyed') failed = true
 
       if (failed) {
         update({ throughput: 'Failed' })
