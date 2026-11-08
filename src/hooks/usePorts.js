@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { WORLD_PORTS_URL } from '../config/sources.js'
 
 /**
- * Fetches the bundled World Port Index GeoJSON once on mount.
+ * Fetches the bundled World Port Index GeoJSON on mount and on each retry.
  * Parses Point features into a flat array.
  *
- * Returns { ports, loaded, error }
+ * Returns { ports, loaded, error, retry }
  *   ports  - Array<{ lon: number, lat: number, name: string }>
  *   loaded - true after successful parse
  *   error  - Error if fetch failed, null otherwise
+ *   retry  - stable function that refetches after a failure
  */
 export function usePorts() {
   const [ports, setPorts] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(null)
+  // Bumped by retry to run the load effect again (issue #10).
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -39,8 +42,17 @@ export function usePorts() {
       }
     }
     load()
+    // Also guards a request superseded by a retry.
     return () => { cancelled = true }
+  }, [attempt])
+
+  // Called from an event handler: clears the error, shows loading again, and
+  // refetches the same URL. Stable across renders.
+  const retry = useCallback(() => {
+    setError(null)
+    setLoaded(false)
+    setAttempt((a) => a + 1)
   }, [])
 
-  return { ports, loaded, error }
+  return { ports, loaded, error, retry }
 }

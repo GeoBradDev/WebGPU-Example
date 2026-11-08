@@ -11,11 +11,11 @@ import { useGPUCapabilities } from '../hooks/useGPUCapabilities.js'
 import { useGPUCompute } from '../hooks/useGPUCompute.js'
 import { GPUInfoPanel } from './GPUInfoPanel.jsx'
 
-function DeckGLOverlay({ layers, onDeviceInitialized }) {
+function DeckGLOverlay({ layers, onDeviceInitialized, onError }) {
   // MapboxOverlay builds its Deck in onAdd from the constructor props, so the
-  // device callback must be passed here, not later through setProps.
+  // device and error callbacks must be passed here, not later through setProps.
   const overlay = useControl(
-    () => new MapboxOverlay({ interleaved: false, useDevicePixels: false, onDeviceInitialized })
+    () => new MapboxOverlay({ interleaved: false, useDevicePixels: false, onDeviceInitialized, onError })
   )
   overlay.setProps({ layers })
   return null
@@ -46,14 +46,98 @@ function useFrameTime() {
   return { frameTime, frameHistory }
 }
 
+// Render device health (issue #10). deck.gl reports the device it created, or
+// an error through onError. Only an error before the device exists means
+// device creation failed; later ones are layer or picking errors. The lost
+// promise resolves on WebGL context loss and on our own unmount, so the
+// mounted guard, not the reason, tells them apart.
+function useRenderHealth() {
+  const render = useMapStore((s) => s.render)
+  const setRender = useMapStore((s) => s.setRender)
+  const deviceRef = useRef(null)
+  const mountedRef = useRef(false)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      deviceRef.current = null
+    }
+  }, [])
+
+  const onDeviceInitialized = useCallback(
+    (device) => {
+      deviceRef.current = device
+      const next = { status: 'ready', type: device.type, renderer: device.info?.renderer ?? null }
+      setRender(next)
+      device.lost?.then(() => {
+        if (mountedRef.current && deviceRef.current === device) setRender({ ...next, status: 'lost' })
+      })
+    },
+    [setRender]
+  )
+
+  const onError = useCallback(
+    (error) => {
+      console.error(error)
+      // After unmount deviceRef is cleared, so a late error (an async pick
+      // rejection, a pending start) must not read as a creation failure.
+      if (!mountedRef.current) return
+      if (!deviceRef.current) setRender({ status: 'failed', type: null, renderer: null })
+    },
+    [setRender]
+  )
+
+  return { render, onDeviceInitialized, onError }
+}
+
+// Basemap health (issue #10). A MapLibre error with no sourceId before load is
+// a style, sprite, or other style-load failure; tile and source errors carry a
+// sourceId, and anything after load leaves the drawn basemap in place.
+// MapLibre's own events carry the map as target; react-maplibre reports an
+// error with no target only when the map could not be created at all (no
+// usable WebGL2, or the import failed). Then it never renders its children,
+// so the deck overlay never mounts either: render has failed too.
+function useBasemapHealth() {
+  const basemapFailed = useMapStore((s) => s.basemapFailed)
+  const setBasemapFailed = useMapStore((s) => s.setBasemapFailed)
+  const setRender = useMapStore((s) => s.setRender)
+  const [mapFailed, setMapFailed] = useState(false)
+  const loadedRef = useRef(false)
+
+  const onLoad = useCallback(() => {
+    loadedRef.current = true
+    setBasemapFailed(false)
+  }, [setBasemapFailed])
+
+  const onError = useCallback(
+    (evt) => {
+      console.error(evt?.error ?? evt)
+      if (!evt?.target) {
+        setMapFailed(true)
+        setRender({ status: 'failed', type: null, renderer: null })
+        setBasemapFailed(true)
+        return
+      }
+      if (evt.sourceId || loadedRef.current) return
+      setBasemapFailed(true)
+    },
+    [setBasemapFailed, setRender]
+  )
+
+  return { basemapFailed, mapFailed, onLoad, onError }
+}
+
 export function MapView({ layerData, heatmapComputeMs }) {
   const { viewport, setViewport, layerVisibility, setSelectedFeature } = useMapStore()
   const gpuBase = useGPUCapabilities()
-  const [renderDevice, setRenderDevice] = useState(null)
-  const onDeviceInitialized = useCallback(
-    (device) => setRenderDevice({ type: device.type, renderer: device.info?.renderer }),
-    []
+  const { render, onDeviceInitialized, onError: onDeckError } = useRenderHealth()
+  const { basemapFailed, mapFailed, onLoad: onMapLoad, onError: onMapError } = useBasemapHealth()
+  const renderDevice = useMemo(
+    () => (render.type ? { type: render.type, renderer: render.renderer } : null),
+    [render.type, render.renderer]
   )
+  const renderStatus = render.status
   const { frameTime, frameHistory } = useFrameTime()
   const { throughput: gpuThroughput, supported: benchSupported, running: benchRunning, run: runBenchmark } =
     useGPUCompute()
@@ -64,8 +148,8 @@ export function MapView({ layerData, heatmapComputeMs }) {
     (layerData.stressPoints?.length ?? 0)
 
   const capabilities = useMemo(
-    () => ({ ...gpuBase, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
-    [gpuBase, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
+    () => ({ ...gpuBase, renderDevice, renderStatus, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
+    [gpuBase, renderDevice, renderStatus, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
   )
 
   const benchmark = useMemo(
@@ -90,10 +174,18 @@ export function MapView({ layerData, heatmapComputeMs }) {
         style={{ width: '100%', height: '100%' }}
         mapStyle={BASEMAP_STYLE}
         onMove={(evt) => setViewport(evt.viewState)}
+        onLoad={onMapLoad}
+        onError={onMapError}
       >
-        <DeckGLOverlay layers={layers} onDeviceInitialized={onDeviceInitialized} />
+        <DeckGLOverlay layers={layers} onDeviceInitialized={onDeviceInitialized} onError={onDeckError} />
       </Map>
       <div className="map-vignette" />
+      {basemapFailed ? (
+        <div className="basemap-fallback" role="status">
+          <span className="basemap-fallback-title">{mapFailed ? 'MAP UNAVAILABLE' : 'BASEMAP UNAVAILABLE'}</span>
+          <span className="basemap-fallback-sub">{mapFailed ? 'WEBGL2 REQUIRED' : 'DATA LAYERS STILL SHOWN'}</span>
+        </div>
+      ) : null}
       <GPUInfoPanel capabilities={capabilities} benchmark={benchmark} />
     </div>
   )

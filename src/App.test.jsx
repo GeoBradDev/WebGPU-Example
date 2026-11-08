@@ -13,7 +13,7 @@ vi.mock('./components/MapView.jsx', () => ({
 }))
 
 vi.mock('./hooks/useGPUHeatmap.js', () => ({
-  useGPUHeatmap: () => ({ canvas: null, computeMs: 0, supported: false }),
+  useGPUHeatmap: () => ({ canvas: null, computeMs: 0, supported: false, error: null, status: 'unsupported', retry: () => {} }),
 }))
 
 const CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n1,KLAX,large_airport,LAX,33.9,-118.4\n'

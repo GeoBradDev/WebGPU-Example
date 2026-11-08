@@ -8,8 +8,11 @@ const BACKEND_LABELS = new Map([
 ])
 
 // RENDER names the luma.gl device type deck.gl actually created. It never
-// looks at the WebGPU adapter tier.
-export function renderBackendLabel(deviceType) {
+// looks at the WebGPU adapter tier. A device that could not be created or was
+// lost (issue #10) shows an error state instead.
+export function renderBackendLabel(deviceType, status) {
+  if (status === 'failed') return { text: 'Failed', ok: false, err: true }
+  if (status === 'lost') return { text: 'Lost', ok: false, err: true }
   if (!deviceType) return { text: 'Detecting...', ok: false }
   const text = BACKEND_LABELS.get(deviceType)
   return text ? { text, ok: true } : { text: 'Unknown', ok: false }

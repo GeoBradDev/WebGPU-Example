@@ -60,3 +60,18 @@ describe('gpuDeviceLabel', () => {
     expect(gpuDeviceLabel(undefined, undefined)).toBe('Unknown')
   })
 })
+
+// Issue #10: a render device that failed or was lost shows an error state.
+describe('renderBackendLabel device health', () => {
+  it('shows Failed with err when the device could not be created', () => {
+    expect(renderBackendLabel(null, 'failed')).toEqual({ text: 'Failed', ok: false, err: true })
+  })
+
+  it('shows Lost with err when the device was lost, even with a known type', () => {
+    expect(renderBackendLabel('webgl', 'lost')).toEqual({ text: 'Lost', ok: false, err: true })
+  })
+
+  it.each(['ready', 'detecting', undefined])('keeps the type label for status %s', (status) => {
+    expect(renderBackendLabel('webgl', status)).toEqual({ text: 'WebGL2', ok: true })
+  })
+})

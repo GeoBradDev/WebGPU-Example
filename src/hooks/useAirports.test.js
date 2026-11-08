@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { parseAirportCSV } from './useAirports.js'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { renderHook, waitFor, act } from '@testing-library/react'
+import { parseAirportCSV, useAirports } from './useAirports.js'
+import { OURAIRPORTS_CSV_URL } from '../config/sources.js'
 
 const SAMPLE_CSV = [
   'id,ident,type,name,latitude_deg,longitude_deg,elevation_ft,continent',
@@ -53,5 +55,60 @@ describe('parseAirportCSV', () => {
     ].join('\n')
     const result = parseAirportCSV(csv)
     expect(result).toHaveLength(0)
+  })
+})
+
+// Issue #10: a failed load can be retried without a page reload.
+describe('useAirports retry', () => {
+  const CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n1,KLAX,large_airport,LAX,33.9,-118.4\n'
+  const okResponse = () => ({ ok: true, text: () => Promise.resolve(CSV) })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('clears the error, goes back to loading, and refetches the same URL', async () => {
+    const fetchMock = vi.fn().mockRejectedValueOnce(new Error('network down'))
+    let release
+    fetchMock.mockImplementationOnce(() => new Promise((r) => { release = r }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => useAirports())
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    expect(result.current.loaded).toBe(false)
+
+    act(() => result.current.retry())
+    expect(result.current.error).toBeNull()
+    expect(result.current.loaded).toBe(false)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, OURAIRPORTS_CSV_URL)
+
+    await act(async () => release(okResponse()))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.error).toBeNull()
+    expect(result.current.airports).toHaveLength(1)
+  })
+
+  it('keeps retry referentially stable across renders', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValue(okResponse()))
+    const { result } = renderHook(() => useAirports())
+    const first = result.current.retry
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    act(() => result.current.retry())
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.retry).toBe(first)
+  })
+
+  it('never writes state from a request that was superseded by unmount', async () => {
+    let release
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((r) => { release = r })))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result, unmount } = renderHook(() => useAirports())
+    const before = result.current
+    unmount()
+    await act(async () => release(okResponse()))
+    expect(result.current).toBe(before)
+    expect(errorSpy).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 })

@@ -169,6 +169,10 @@ body::before {
   color: var(--amber);
 }
 
+.header-status .err {
+  color: var(--red);
+}
+
 .coord-display {
   color: var(--text-primary);
   font-size: 11px;
@@ -368,6 +372,75 @@ body::before {
 
 .layer-toggle.on  { color: var(--accent); }
 .layer-toggle.off { color: var(--text-dim); }
+
+/* Issue #10: per-layer status line under the toggle row, indented to the
+   label (row padding 12px + dot 8px + gap 10px). */
+.layer-row:has(+ .layer-status) {
+  border-bottom: 0;
+}
+
+.layer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  padding: 0 12px 6px 30px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.layer-status-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.layer-status-error {
+  color: var(--red);
+}
+
+/* Same look as the RUN button (.gpu-bench-btn). */
+.layer-retry {
+  flex-shrink: 0;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid var(--border-active);
+  color: var(--accent);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.layer-retry:hover {
+  border-color: var(--accent);
+}
+
+.layer-retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.layer-note {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Failure count on the collapsed narrow-screen toggle. */
+.panel-alert {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--red);
+  white-space: nowrap;
+}
 
 .panel-footer {
   padding: 7px 12px;
@@ -579,6 +652,40 @@ body::before {
   vertical-align: top;
 }
 
+/* ─── BASEMAP FALLBACK ─── */
+
+/* Issue #10: shown when the basemap style fails to load. It never takes
+   pointer input, so the data layers underneath stay usable. */
+.basemap-fallback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-active);
+  text-align: center;
+}
+
+.basemap-fallback-title {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+}
+
+.basemap-fallback-sub {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-primary);
+}
+
 /* ─── GPU INFO PANEL ─── */
 
 .gpu-info-panel {
@@ -746,10 +853,24 @@ body::before {
     letter-spacing: 0.15em;
   }
 
-  .header-status,
   .coord-display,
   .header-sep {
     display: none;
+  }
+
+  /* Out of the layout but still in the accessibility tree, so the status
+     live region keeps announcing (issue #10). Same clip as .visually-hidden. */
+  .header-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* Cap the expanded panel so it stays above the GPU panel (bottom: 40px,

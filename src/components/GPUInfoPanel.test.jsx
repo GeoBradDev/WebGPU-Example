@@ -210,3 +210,22 @@ describe('GPUInfoPanel RENDER backend', () => {
     expect(screen.getByText('GPU').closest('.gpu-info-item')).toHaveTextContent('ANGLE (Test)')
   })
 })
+
+// Issue #10: a failed or lost render device shows an error state on RENDER.
+describe('GPUInfoPanel RENDER health', () => {
+  const renderVal = () => screen.getByText('RENDER').closest('.gpu-info-item').querySelector('.gpu-info-val')
+
+  it('shows Failed with an err class when deck could not create a device', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, renderStatus: 'failed' }} />)
+    expect(renderVal()).toHaveTextContent('Failed')
+    expect(renderVal()).toHaveClass('err')
+    expect(renderVal()).not.toHaveClass('warn')
+  })
+
+  it('shows Lost with an err class when the render device was lost', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, renderDevice: { type: 'webgl' }, renderStatus: 'lost' }} />)
+    expect(renderVal()).toHaveTextContent('Lost')
+    expect(renderVal()).toHaveClass('err')
+    expect(renderVal()).not.toHaveClass('ok')
+  })
+})

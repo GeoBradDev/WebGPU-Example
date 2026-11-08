@@ -55,4 +55,23 @@ describe('mapStore', () => {
     const state = useMapStore.getInitialState()
     expect(state.layerVisibility.heatmap).toBe(true)
   })
+
+  // Issue #10: shared health state for the header and the GPU panel.
+  it('starts with render detecting and the basemap not failed', () => {
+    const state = useMapStore.getInitialState()
+    expect(state.render).toEqual({ status: 'detecting', type: null, renderer: null })
+    expect(state.basemapFailed).toBe(false)
+  })
+
+  it('setRender stores the render device health', () => {
+    useMapStore.getState().setRender({ status: 'ready', type: 'webgl', renderer: 'ANGLE' })
+    expect(useMapStore.getState().render).toEqual({ status: 'ready', type: 'webgl', renderer: 'ANGLE' })
+  })
+
+  it('setBasemapFailed stores the basemap failure flag', () => {
+    useMapStore.getState().setBasemapFailed(true)
+    expect(useMapStore.getState().basemapFailed).toBe(true)
+    useMapStore.getState().setBasemapFailed(false)
+    expect(useMapStore.getState().basemapFailed).toBe(false)
+  })
 })

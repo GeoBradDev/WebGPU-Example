@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { HEATMAP_GRID_W as GRID_W, HEATMAP_GRID_H as GRID_H, binningWGSL } from '../layers/heatmapProjection.js'
 
 const GRID_SIZE = GRID_W * GRID_H
 const WORKGROUP_SIZE = 256
+const LOST = Symbol('lost')
 
 // ---- WGSL shaders --------------------------------------------------------
 
@@ -88,22 +89,62 @@ export function buildPointsData(airports) {
 
 // ---- Hook ----------------------------------------------------------------
 
+const NO_RESULT = { attempt: -1, status: null, canvas: null, computeMs: null, error: null }
+
 /**
  * Runs a two-pass WebGPU compute shader to generate an airport density heatmap.
- * Fires once when airports.length > 0. Returns canvas when complete.
+ * Runs once per attempt when airports.length > 0; retry starts a new attempt.
+ *
+ * status (issue #10):
+ *   'unsupported' - navigator.gpu is absent, the mount-time adapter probe
+ *                   resolved null or threw, or the compute's own
+ *                   requestAdapter() resolved null (a throw there is 'error')
+ *   'waiting'     - WebGPU is present and airports are empty
+ *   'computing'   - the compute for the current attempt has not finished
+ *   'ready'       - finished with no error; canvas and computeMs are set
+ *   'error'       - a thrown error, an error-scope error, or a device loss
  *
  * @param {Array<{lon: number, lat: number}>} airports
- * @returns {{ canvas: HTMLCanvasElement|null, computeMs: number|null, supported: boolean, error: Error|null }}
+ * @returns {{ canvas: string|null, computeMs: number|null, supported: boolean, error: Error|null,
+ *   status: string, retry: () => void }}
  */
 export function useGPUHeatmap(airports) {
-  const [state, setState] = useState({ canvas: null, computeMs: null, supported: false, error: null })
-  const hasRun = useRef(false)
+  // navigator.gpu is known synchronously at first render.
+  const [gpuPresent] = useState(() => Boolean(navigator.gpu))
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState(NO_RESULT)
+  // 'pending' | 'ok' | 'none'. navigator.gpu can exist with no adapter, so
+  // probe once at mount, independent of airports; a throw counts as none,
+  // like useGPUCapabilities.
+  const [probe, setProbe] = useState('pending')
+  const startedRef = useRef(-1)
+  const runningRef = useRef(false)
 
   useEffect(() => {
-    if (hasRun.current || airports.length === 0) return
+    if (!navigator.gpu) return
+    let cancelled = false
+    Promise.resolve()
+      .then(() => navigator.gpu.requestAdapter())
+      .then(
+        (adapter) => {
+          if (!cancelled) setProbe(adapter ? 'ok' : 'none')
+        },
+        () => {
+          if (!cancelled) setProbe('none')
+        }
+      )
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (startedRef.current === attempt || airports.length === 0) return
     if (!navigator.gpu) return
 
-    hasRun.current = true
+    startedRef.current = attempt
+    runningRef.current = true
+    const thisAttempt = attempt
 
     let device = null
     const buffers = []
@@ -113,8 +154,27 @@ export function useGPUHeatmap(airports) {
     async function run() {
       try {
         const adapter = await navigator.gpu.requestAdapter()
-        if (!adapter) throw new Error('No WebGPU adapter available')
+        if (!adapter) {
+          setResult({ ...NO_RESULT, attempt: thisAttempt, status: 'unsupported' })
+          return
+        }
         device = await adapter.requestDevice()
+
+        // Shader, pipeline, and allocation errors are reported asynchronously,
+        // so collect them in error scopes and treat a device loss as a failure.
+        device.pushErrorScope('out-of-memory')
+        device.pushErrorScope('validation')
+        let lostInfo = null
+        const lost = device.lost.then((info) => {
+          lostInfo = info ?? {}
+          return LOST
+        })
+        const lostError = () => new Error(`WebGPU device lost${lostInfo?.message ? `: ${lostInfo.message}` : ''}`)
+        const untilLost = async (promise) => {
+          const outcome = await Promise.race([promise, lost])
+          if (outcome === LOST) throw lostError()
+          return outcome
+        }
 
         const airportCount = airports.length
         const pointsData = buildPointsData(airports)
@@ -183,7 +243,7 @@ export function useGPUHeatmap(airports) {
         enc.copyBufferToBuffer(gridBuf, 0, gridStagingBuf, 0, gridBytes)
         device.queue.submit([enc.finish()])
 
-        await gridStagingBuf.mapAsync(GPUMapMode.READ)
+        await untilLost(gridStagingBuf.mapAsync(GPUMapMode.READ))
         const gridData = new Uint32Array(gridStagingBuf.getMappedRange().slice(0))
         gridStagingBuf.unmap()
         const maxCount = gridData.reduce((a, b) => Math.max(a, b), 0)
@@ -213,11 +273,18 @@ export function useGPUHeatmap(airports) {
         enc.copyBufferToBuffer(rgbaBuf, 0, rgbaStagingBuf, 0, rgbaBytes)
         device.queue.submit([enc.finish()])
 
-        await rgbaStagingBuf.mapAsync(GPUMapMode.READ)
+        await untilLost(rgbaStagingBuf.mapAsync(GPUMapMode.READ))
         const rgbaData = new Uint8ClampedArray(rgbaStagingBuf.getMappedRange().slice(0))
         rgbaStagingBuf.unmap()
 
         const computeMs = Math.round(performance.now() - t0)
+
+        // Popped in reverse order of the pushes, after the last readback.
+        const validationError = await untilLost(device.popErrorScope())
+        const oomError = await untilLost(device.popErrorScope())
+        const scopeError = validationError || oomError
+        if (scopeError) throw new Error(scopeError.message || 'WebGPU validation error')
+        if (lostInfo) throw lostError()
 
         // ---- Draw to canvas and convert to data URL for deck.gl BitmapLayer compatibility ----
         const canvas = document.createElement('canvas')
@@ -226,18 +293,39 @@ export function useGPUHeatmap(airports) {
         canvas.getContext('2d').putImageData(new ImageData(rgbaData, GRID_W, GRID_H), 0, 0)
         const imageUrl = canvas.toDataURL()
 
-        setState({ canvas: imageUrl, computeMs, supported: true, error: null })
+        setResult({ attempt: thisAttempt, status: 'ready', canvas: imageUrl, computeMs, error: null })
       } catch (err) {
         console.error('[useGPUHeatmap]', err)
-        setState({ canvas: null, computeMs: null, supported: false, error: err })
+        setResult({ ...NO_RESULT, attempt: thisAttempt, status: 'error', error: err })
       } finally {
         for (const buf of buffers) buf.destroy()
         device?.destroy()
+        runningRef.current = false
       }
     }
 
     run()
-  }, [airports.length])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [airports.length, attempt])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  return state
+  // Called from an event handler; a run in progress is never doubled.
+  const retry = useCallback(() => {
+    if (runningRef.current) return
+    setAttempt((a) => a + 1)
+  }, [])
+
+  let status
+  if (!gpuPresent || probe === 'none' || result.status === 'unsupported') status = 'unsupported'
+  else if (airports.length === 0) status = 'waiting'
+  else if (result.attempt === attempt) status = result.status
+  else status = 'computing'
+
+  const ready = status === 'ready'
+  return {
+    canvas: ready ? result.canvas : null,
+    computeMs: ready ? result.computeMs : null,
+    supported: status !== 'unsupported',
+    error: status === 'error' ? result.error : null,
+    status,
+    retry,
+  }
 }
