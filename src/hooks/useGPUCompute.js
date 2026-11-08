@@ -5,6 +5,7 @@ const WORKGROUP_SIZE = 256
 const WORKGROUPS = COUNT / WORKGROUP_SIZE  // 65535
 // 128MB traffic per dispatch: 64MB read + 64MB write
 const BYTES_PER_DISPATCH_GB = 0.128
+const LOST = Symbol('lost')
 
 export const BENCHMARK_DISPATCHES = 5
 
@@ -103,6 +104,16 @@ export function useGPUCompute() {
       }
       const device = res.device
 
+      // Out-of-memory and validation errors are reported asynchronously, and an
+      // invalid buffer or pipeline turns submits into no-ops, so collect them.
+      device.pushErrorScope('out-of-memory')
+      device.pushErrorScope('validation')
+      let lostReason = null
+      const lost = device.lost.then((info) => {
+        lostReason = info?.reason ?? 'unknown'
+        return LOST
+      })
+
       res.buffer = device.createBuffer({
         size: COUNT * 4,
         usage: GPUBufferUsage.STORAGE,
@@ -122,6 +133,7 @@ export function useGPUCompute() {
       })
 
       const timings = []
+      let failed = false
       for (let k = 0; k < BENCHMARK_DISPATCHES; k++) {
         if (stopped()) break
         const t0 = performance.now()
@@ -132,11 +144,24 @@ export function useGPUCompute() {
         pass.dispatchWorkgroups(WORKGROUPS)
         pass.end()
         device.queue.submit([encoder.finish()])
-        await device.queue.onSubmittedWorkDone()
+        const outcome = await Promise.race([device.queue.onSubmittedWorkDone(), lost])
+        if (outcome === LOST) {
+          // 'destroyed' is our own release on unmount, so it counts as a stop.
+          failed = lostReason !== 'destroyed'
+          break
+        }
         timings.push((performance.now() - t0) / 1000)
       }
 
-      if (stopRef.current || timings.length < BENCHMARK_DISPATCHES) {
+      if (lostReason === null) {
+        const validationError = await device.popErrorScope()
+        const oomError = await device.popErrorScope()
+        if (validationError || oomError) failed = true
+      }
+
+      if (failed) {
+        update({ throughput: 'Failed' })
+      } else if (stopRef.current || timings.length < BENCHMARK_DISPATCHES) {
         update({ throughput: 'Stopped' })
       } else {
         update({ throughput: formatThroughput(median(timings)) })
