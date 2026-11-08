@@ -58,6 +58,7 @@ Domain skills:
 - `src/hooks/useAirports.test.js`, `src/hooks/usePorts.test.js`: retry tests.
 - `src/hooks/useGPUHeatmap.js`: status model, error scopes, device-loss race, adapter-null as unsupported, `attempt` + `retry` replacing the `hasRun` ref semantics (one run per attempt).
 - `src/hooks/useGPUHeatmap.errors.test.js` (new): fake `navigator.gpu` device; stub `GPUBufferUsage`, `GPUMapMode`, `ImageData`, and `HTMLCanvasElement.prototype.getContext`/`toDataURL` as needed; restore after.
+- `src/hooks/useGPUHeatmap.asyncValidation.test.js` (new): the frozen defect reproduction (an asynchronous validation error popped from an error scope must give `status: 'error'` and `canvas: null`), kept in its own self-contained file so the frozen test is never edited while the other heatmap tests grow.
 - `src/status/systemStatus.js` (new) and `src/status/systemStatus.test.js` (new).
 - `src/store/mapStore.js` (+ `src/store/mapStore.test.js`): `render`, `setRender`, `basemapFailed`, `setBasemapFailed`.
 - `src/components/gpuLabels.js` (+ test): `renderBackendLabel(deviceType, status)` returns `{ text: 'Failed' | 'Lost', ok: false, err: true }` for those statuses; existing behavior unchanged otherwise.
@@ -98,7 +99,7 @@ Domain skills:
 ## Proof
 
 - AC1, AC2, AC3, AC12: `src/App.status.test.jsx` (airports failure shows `LOAD FAILED` + `Retry Airports` + `SYS DEGRADED`; ports likewise; Retry with fetch now succeeding shows `1 FEATURES` and `SYS NOMINAL` with the same App instance and two fetch calls for the URL; focus lands on the checkbox), `src/components/LayerPanel.status.test.jsx`, hook retry tests.
-- AC4: `src/hooks/useGPUHeatmap.errors.test.js`.
+- AC4: `src/hooks/useGPUHeatmap.asyncValidation.test.js` (frozen defect), `src/hooks/useGPUHeatmap.errors.test.js`.
 - AC5, AC10, AC11: `LayerPanel.status.test.jsx`, `src/styles.test.js`.
 - AC6, AC7: `src/components/MapView.health.test.jsx`, `gpuLabels.test.js`.
 - AC8, AC9: `src/status/systemStatus.test.js`, `src/store/mapStore.test.js`.
