@@ -641,6 +641,35 @@ body::before {
   color: var(--text-dim);
 }
 
+/* The panel ignores pointer input so it never blocks the map; the button opts back in. */
+.gpu-bench-btn {
+  pointer-events: auto;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 6px;
+  background: none;
+  border: 1px solid var(--border-active);
+  color: var(--accent);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.gpu-bench-btn:hover {
+  border-color: var(--accent);
+}
+
+.gpu-bench-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gpu-bench-btn[aria-disabled='true'] {
+  color: var(--text-dim);
+  border-color: var(--border);
+  cursor: default;
+}
+
 /* ─── RESPONSIVE ─── */
 
 @media (max-width: 1024px) {
