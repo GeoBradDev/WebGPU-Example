@@ -69,9 +69,10 @@ body::before {
   min-height: 0;
 }
 
-/* clip, unlike hidden, is not a scroll container, so focusing a dialog that
-   briefly pokes past the edge (popup slide-up) cannot scroll the map area.
-   Inside @supports so the CSS minifier cannot merge away the hidden fallback. */
+/* Safety net: clip, unlike hidden, makes .app-body a non-scroll container,
+   so focusing anything inside it (such as the popup dialog) can never scroll
+   the map area. Inside @supports so the CSS minifier cannot merge away the
+   hidden fallback. */
 @supports (overflow: clip) {
   .app-body {
     overflow: clip;
