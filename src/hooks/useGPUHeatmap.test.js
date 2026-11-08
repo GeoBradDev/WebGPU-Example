@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useGPUHeatmap, buildPointsData } from './useGPUHeatmap.js'
+import { useGPUHeatmap, buildPointsData, ACCUMULATE_SHADER } from './useGPUHeatmap.js'
+import { binningWGSL } from '../layers/heatmapProjection.js'
 
 describe('buildPointsData', () => {
   it('returns a Float32Array of length airportCount * 2', () => {
@@ -43,5 +44,19 @@ describe('useGPUHeatmap', () => {
 
   it('does not throw when airports array is empty', () => {
     expect(() => renderHook(() => useGPUHeatmap([]))).not.toThrow()
+  })
+})
+describe('ACCUMULATE_SHADER binning', () => {
+  it('includes the generated Mercator binning functions', () => {
+    expect(ACCUMULATE_SHADER).toContain(binningWGSL())
+  })
+
+  it('bins each point with the generated lonToCol and latToRow', () => {
+    expect(ACCUMULATE_SHADER).toMatch(/lonToCol\(\s*lon\s*\)/)
+    expect(ACCUMULATE_SHADER).toMatch(/latToRow\(\s*lat\s*\)/)
+  })
+
+  it('no longer uses the linear equirectangular latitude mapping', () => {
+    expect(ACCUMULATE_SHADER).not.toContain('(90.0 - lat) / 180.0')
   })
 })

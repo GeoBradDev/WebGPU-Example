@@ -10,6 +10,7 @@ vi.mock('@deck.gl/layers', () => ({
 }))
 
 import { buildLayers } from './index.js'
+import { HEATMAP_BOUNDS } from './heatmapProjection.js'
 
 const mockAirport = { lon: 10, lat: 20, name: 'Test Airport', type: 'large_airport' }
 const mockPort = { lon: 30, lat: 40, name: 'Test Port' }
@@ -208,5 +209,16 @@ describe('buildLayers', () => {
     )
     const layer = layers.find((l) => l.id === 'heatmap')
     expect(layer.props.bounds).toEqual([-180, -85.051129, 180, 85.051129])
+  })
+
+  it('heatmap layer bounds come from the shared projection helper', () => {
+    const layers = buildLayers(
+      { airports: false, ports: false, heatmap: true },
+      { airports: [], ports: [], heatmapCanvas: mockCanvas },
+      vi.fn()
+    )
+    const layer = layers.find((l) => l.id === 'heatmap')
+    expect(layer.props.bounds).toEqual(HEATMAP_BOUNDS)
+    expect(layer.props._imageCoordinateSystem).toBeUndefined()
   })
 })
