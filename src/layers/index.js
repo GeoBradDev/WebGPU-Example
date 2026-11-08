@@ -1,4 +1,5 @@
 import { ScatterplotLayer, BitmapLayer } from '@deck.gl/layers'
+import { HEATMAP_BOUNDS } from './heatmapProjection.js'
 
 /**
  * Builds the deck.gl layer array from current visibility and data state.
@@ -14,7 +15,7 @@ export function buildLayers(layerVisibility, data, onFeatureClick) {
     layers.push(
       new BitmapLayer({
         id: 'heatmap',
-        bounds: [-180, -85.051129, 180, 85.051129],
+        bounds: HEATMAP_BOUNDS,
         image: data.heatmapCanvas,
         opacity: 0.6,
         fetch: (url) =>

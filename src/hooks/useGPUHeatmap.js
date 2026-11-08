@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
+import { HEATMAP_GRID_W as GRID_W, HEATMAP_GRID_H as GRID_H, binningWGSL } from '../layers/heatmapProjection.js'
 
-const GRID_W = 1024
-const GRID_H = 512
 const GRID_SIZE = GRID_W * GRID_H
 const WORKGROUP_SIZE = 256
 
 // ---- WGSL shaders --------------------------------------------------------
 
-const ACCUMULATE_SHADER = `
+export const ACCUMULATE_SHADER = `
 struct Params { count: u32 }
 
 @group(0) @binding(0) var<storage, read>       points: array<vec2<f32>>;
 @group(0) @binding(1) var<uniform>             params: Params;
 @group(0) @binding(2) var<storage, read_write> grid:   array<atomic<u32>>;
-
+${binningWGSL()}
 @compute @workgroup_size(${WORKGROUP_SIZE})
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let i = gid.x;
@@ -22,10 +21,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let lon = points[i].x;
   let lat = points[i].y;
 
-  // Map lon [-180, 180] -> col [0, GRID_W-1]
-  let col = u32(clamp((lon + 180.0) / 360.0 * f32(${GRID_W}), 0.0, f32(${GRID_W} - 1u)));
-  // Map lat [-90, 90] -> row [0, GRID_H-1] (north at row 0)
-  let row = u32(clamp((90.0 - lat) / 180.0 * f32(${GRID_H}), 0.0, f32(${GRID_H} - 1u)));
+  // Bin in Web Mercator to match the BitmapLayer bounds (see heatmapProjection.js)
+  let col = lonToCol(lon);
+  let row = latToRow(lat);
 
   atomicAdd(&grid[row * ${GRID_W}u + col], 1u);
 }
