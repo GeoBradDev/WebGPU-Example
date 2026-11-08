@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   parseCSV,
   transformAirports,
+  checkCounts,
   INCLUDED_TYPES,
   EXCLUDED_TYPES,
 } from './airports-transform.js'
@@ -55,6 +56,30 @@ describe('parseCSV', () => {
       ['a', '', 'c'],
       ['', '', ''],
     ])
+  })
+})
+
+// Issue #9 review F1: malformed quoting must fail loudly, not merge rows.
+describe('parseCSV strictness', () => {
+  it('throws on a quote inside an unquoted field, naming the line', () => {
+    expect(() => parseCSV('a,b"c,d\n1,2,3\n')).toThrow(/line 1\b/)
+  })
+
+  it('throws on a character after a closing quote, naming the line', () => {
+    expect(() => parseCSV('"abc"x,y\n')).toThrow(/line 1\b/)
+  })
+
+  it('throws on end of input inside a quoted field, naming the line it opened on', () => {
+    expect(() => parseCSV('a,"unterminated\n1,2\n')).toThrow(/line 1\b/)
+  })
+
+  it('counts physical lines, including newlines inside quoted fields', () => {
+    expect(() => parseCSV('"a\nb",1\nc"d,2\n')).toThrow(/line 3\b/)
+    expect(() => parseCSV('a,b\r\n1,2\r\n3,"x"y\r\n')).toThrow(/line 3\b/)
+  })
+
+  it('still accepts a quoted field closed right before a delimiter, newline, or end', () => {
+    expect(parseCSV('"a",b\n"c"\r\n"d"')).toEqual([['a', 'b'], ['c'], ['d']])
   })
 })
 
@@ -144,5 +169,24 @@ describe('transformAirports', () => {
     const { counts } = transformAirports('type,name,latitude_deg,longitude_deg\n\nlarge_airport,A,1,2\n\n')
     expect(counts.total).toBe(1)
     expect(counts.included).toBe(1)
+  })
+})
+
+// Issue #9 review F1: the build script must not write an empty snapshot, and
+// must surface upstream types it has never seen.
+describe('checkCounts', () => {
+  it('throws when no airports were included', () => {
+    const { counts } = transformAirports('type,name,latitude_deg,longitude_deg\nheliport,H,1,2\n')
+    expect(() => checkCounts(counts)).toThrow(/no airports/i)
+  })
+
+  it('lists input types that are neither included nor excluded', () => {
+    const { counts } = transformAirports(FIXTURE)
+    expect(checkCounts(counts)).toEqual({ unknownTypes: ['spaceport'] })
+  })
+
+  it('returns no unknown types for known input', () => {
+    const { counts } = transformAirports('type,name,latitude_deg,longitude_deg\nlarge_airport,A,1,2\nclosed,C,1,2\n')
+    expect(checkCounts(counts)).toEqual({ unknownTypes: [] })
   })
 })
