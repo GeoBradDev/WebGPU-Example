@@ -40,7 +40,7 @@ Report the truth. Do not wire WebGPU rendering. RENDER reads the device type dec
 - `src/components/GPUInfoPanel.test.jsx` and `src/components/GPUInfoPanel.benchmarkTier.test.jsx`: change `getByText('COMPUTE')` lookups and the `'COMPUTE'` entry in the secondary-key loop to `'WEBGPU COMPUTE'`; add panel tests for AC1 to AC3 (incl. tier `webgpu` + device `webgl`).
 - `src/components/MapView.jsx`: `const [renderDevice, setRenderDevice] = useState(null)`. A stable `useCallback` `(device) => setRenderDevice({ type: device.type, renderer: device.info?.renderer })`. `DeckGLOverlay` takes `onDeviceInitialized` and passes it in the `MapboxOverlay` constructor props (the overlay creates its `Deck` in `onAdd` from those props, so it must be there at construction; `setProps({ layers })` keeps it). Add `renderDevice` to the `capabilities` memo and its deps.
 - `src/components/MapView.test.jsx` (new): wiring test of AC6. Mock `react-map-gl/maplibre` (`Map` renders children; `useControl(factory)` calls the factory once and returns its result), mock `@deck.gl/mapbox` `MapboxOverlay` as a class that records its constructor props and has `setProps`, mock `maplibre-gl/dist/maplibre-gl.css` and `../config/maplibreWorker.js` if needed, mock `useGPUCapabilities` and `useGPUCompute`. Call the recorded `onDeviceInitialized` inside `act` and assert RENDER.
-- `README.md`: AC8 only.
+- `README.md`: AC8, plus the GPU name truncation and hover in the panel bullet and a Known limitations line that RENDER is not updated after deck reports its device (device creation failure stays `Detecting...`, context loss is not reflected).
 
 ## Order of work
 
