@@ -1,6 +1,6 @@
 # WebGPU Groundtruth
 
-A browser map that renders global airports and sea ports over a dark vector basemap and uses WebGPU compute shaders for an airport density heatmap and a live GPU throughput readout. A stress-test slider adds up to 5,000,000 random points so you can watch frame time under load.
+A browser map that renders global airports and sea ports over a dark vector basemap and uses WebGPU compute shaders for an airport density heatmap and an on-demand GPU throughput benchmark. A stress-test slider adds up to 5,000,000 random points so you can watch frame time under load.
 
 Built with React 19, Vite, MapLibre GL (through `react-map-gl`), deck.gl (`@deck.gl/mapbox` overlay with `ScatterplotLayer` and `BitmapLayer`), and zustand for UI state.
 
@@ -11,7 +11,7 @@ Built with React 19, Vite, MapLibre GL (through `react-map-gl`), deck.gl (`@deck
 - **Sea ports layer:** the bundled ports GeoJSON, drawn as green points. Click a point to see its properties.
 - **Heatmap layer (WebGPU only):** a two-pass compute shader bins airport positions into a 1024 x 512 grid and colorizes it into a bitmap overlay. It runs once, after the airports load. The layer toggle appears only after that compute succeeds, so it is hidden while airports load, when WebGPU is unavailable, and when the airports fetch or the compute fails.
 - **Stress test:** a slider from 0 to 5,000,000 points in steps of 100,000. Points are generated on the main thread 150 ms after the slider stops moving, then drawn as a deck.gl binary attribute layer.
-- **GPU info panel:** adapter name, render tier (`WebGPU`, `WebGL Fallback`, or `Detecting...`), active point count, frame time with a 60-frame sparkline, an on-demand compute benchmark (press `RUN` next to COMPUTE: 5 sequential dispatches over a 64 MB storage buffer, reported as the median in GB/s, labelled `est.` because it is CPU timed; the buffer and device are freed when the run ends, and the run stops if the tab is hidden), and heatmap compute time. At 1024px wide or less it shows only the render tier, active point count, and frame time. On small screens (see below) it is hidden while a feature popup is open.
+- **GPU info panel:** adapter name, render tier (`WebGPU`, `WebGL Fallback`, or `Detecting...`), active point count, frame time with a 60-frame sparkline, an on-demand compute benchmark (press `RUN` next to COMPUTE: 5 sequential dispatches over a 64 MB storage buffer, reported as the median in GB/s, labelled `est.` because it is CPU timed, or `Too fast` when the timer is too coarse to measure it; out-of-memory, validation errors, and device loss show `Failed`; the buffer and device are freed when the run ends, and the run stops if the tab is hidden), and heatmap compute time. At 1024px wide or less it shows only the render tier, active point count, and frame time. On small screens (see below) it is hidden while a feature popup is open.
 - **Small screens** (640px wide or less, or up to 1024px wide and 500px tall or less): the layer panel starts collapsed behind a "Sensor layers" button, the header drops the coordinates and status, and the feature popup opens as a bottom sheet.
 
 ## Requirements
