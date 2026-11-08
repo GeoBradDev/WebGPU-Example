@@ -5,6 +5,7 @@
 // CI never runs this script; the generated files are committed.
 
 import { writeFile, mkdir } from 'node:fs/promises'
+import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { transformAirports, checkCounts } from './airports-transform.js'
@@ -58,7 +59,23 @@ async function main() {
   console.log(JSON.stringify(counts, null, 2))
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+/**
+ * True when this module is the script Node was asked to run. Node resolves the
+ * module URL through symlinks but keeps argv[1] as typed, so compare realpaths.
+ *
+ * @param {string|undefined} argv1
+ * @param {string} moduleUrl
+ */
+export function isMainModule(argv1, moduleUrl) {
+  if (!argv1) return false
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(moduleUrl))
+  } catch {
+    return false
+  }
+}
+
+if (isMainModule(process.argv[1], import.meta.url)) {
   main().catch((err) => {
     console.error(err)
     process.exitCode = 1
