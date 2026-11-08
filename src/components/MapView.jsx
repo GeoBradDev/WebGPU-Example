@@ -91,9 +91,15 @@ function useRenderHealth() {
 // Basemap health (issue #10). A MapLibre error with no sourceId before load is
 // a style, sprite, or other style-load failure; tile and source errors carry a
 // sourceId, and anything after load leaves the drawn basemap in place.
+// MapLibre's own events carry the map as target; react-maplibre reports an
+// error with no target only when the map could not be created at all (no
+// usable WebGL2, or the import failed). Then it never renders its children,
+// so the deck overlay never mounts either: render has failed too.
 function useBasemapHealth() {
   const basemapFailed = useMapStore((s) => s.basemapFailed)
   const setBasemapFailed = useMapStore((s) => s.setBasemapFailed)
+  const setRender = useMapStore((s) => s.setRender)
+  const [mapFailed, setMapFailed] = useState(false)
   const loadedRef = useRef(false)
 
   const onLoad = useCallback(() => {
@@ -104,20 +110,26 @@ function useBasemapHealth() {
   const onError = useCallback(
     (evt) => {
       console.error(evt?.error ?? evt)
-      if (evt?.sourceId || loadedRef.current) return
+      if (!evt?.target) {
+        setMapFailed(true)
+        setRender({ status: 'failed', type: null, renderer: null })
+        setBasemapFailed(true)
+        return
+      }
+      if (evt.sourceId || loadedRef.current) return
       setBasemapFailed(true)
     },
-    [setBasemapFailed]
+    [setBasemapFailed, setRender]
   )
 
-  return { basemapFailed, onLoad, onError }
+  return { basemapFailed, mapFailed, onLoad, onError }
 }
 
 export function MapView({ layerData, heatmapComputeMs }) {
   const { viewport, setViewport, layerVisibility, setSelectedFeature } = useMapStore()
   const gpuBase = useGPUCapabilities()
   const { render, onDeviceInitialized, onError: onDeckError } = useRenderHealth()
-  const { basemapFailed, onLoad: onMapLoad, onError: onMapError } = useBasemapHealth()
+  const { basemapFailed, mapFailed, onLoad: onMapLoad, onError: onMapError } = useBasemapHealth()
   const renderDevice = useMemo(
     () => (render.type ? { type: render.type, renderer: render.renderer } : null),
     [render.type, render.renderer]
@@ -167,8 +179,8 @@ export function MapView({ layerData, heatmapComputeMs }) {
       <div className="map-vignette" />
       {basemapFailed ? (
         <div className="basemap-fallback" role="status">
-          <span className="basemap-fallback-title">BASEMAP UNAVAILABLE</span>
-          <span className="basemap-fallback-sub">DATA LAYERS STILL SHOWN</span>
+          <span className="basemap-fallback-title">{mapFailed ? 'MAP UNAVAILABLE' : 'BASEMAP UNAVAILABLE'}</span>
+          <span className="basemap-fallback-sub">{mapFailed ? 'WEBGL2 REQUIRED' : 'DATA LAYERS STILL SHOWN'}</span>
         </div>
       ) : null}
       <GPUInfoPanel capabilities={capabilities} benchmark={benchmark} />
