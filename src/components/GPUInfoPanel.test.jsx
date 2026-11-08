@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { GPUInfoPanel } from './GPUInfoPanel.jsx'
+import userEvent from '@testing-library/user-event'
 
 const base = {
   tier: 'webgpu',
@@ -88,5 +89,75 @@ describe('GPUInfoPanel secondary stats', () => {
       .filter((el) => !el.classList.contains('gpu-info-secondary'))
       .map((el) => (el.classList.contains('gpu-info-sep') ? '|' : el.querySelector('.gpu-info-key').textContent))
     expect(visible).toEqual(['RENDER', '|', 'PTS', '|', 'FRAME'])
+  })
+})
+
+describe('GPUInfoPanel benchmark control', () => {
+  const bench = (over = {}) => ({ supported: true, running: false, onRun: vi.fn(), ...over })
+
+  it('has no RUN button when the benchmark prop is omitted', () => {
+    render(<GPUInfoPanel capabilities={base} />)
+    expect(screen.queryByRole('button', { name: 'Run compute benchmark' })).not.toBeInTheDocument()
+  })
+
+  it('has no RUN button when the benchmark is unsupported', () => {
+    render(<GPUInfoPanel capabilities={base} benchmark={bench({ supported: false })} />)
+    expect(screen.queryByRole('button', { name: 'Run compute benchmark' })).not.toBeInTheDocument()
+    expect(screen.getByText('COMPUTE').closest('.gpu-info-item')).toHaveTextContent('--')
+  })
+
+  it('renders a native RUN button inside the COMPUTE item when supported', () => {
+    render(<GPUInfoPanel capabilities={base} benchmark={bench()} />)
+    const button = screen.getByRole('button', { name: 'Run compute benchmark' })
+    expect(button.tagName).toBe('BUTTON')
+    expect(button).toHaveAttribute('type', 'button')
+    expect(button).toHaveTextContent('RUN')
+    expect(button).toHaveClass('gpu-bench-btn')
+    expect(button.closest('.gpu-info-item')).toBe(screen.getByText('COMPUTE').closest('.gpu-info-item'))
+  })
+
+  it('runs on click', async () => {
+    const b = bench()
+    render(<GPUInfoPanel capabilities={base} benchmark={b} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Run compute benchmark' }))
+    expect(b.onRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('is reachable with Tab and runs on Enter and on Space', async () => {
+    const user = userEvent.setup()
+    const b = bench()
+    render(<GPUInfoPanel capabilities={base} benchmark={b} />)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Run compute benchmark' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(b.onRun).toHaveBeenCalledTimes(1)
+    await user.keyboard(' ')
+    expect(b.onRun).toHaveBeenCalledTimes(2)
+  })
+
+  it('is aria-disabled, still focusable, and ignores activation while running', async () => {
+    const user = userEvent.setup()
+    const b = bench({ running: true })
+    render(<GPUInfoPanel capabilities={{ ...base, gpuThroughput: 'Running...' }} benchmark={b} />)
+    const button = screen.getByRole('button', { name: 'Run compute benchmark' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toBeDisabled()
+    await user.tab()
+    expect(button).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.click(button)
+    expect(b.onRun).not.toHaveBeenCalled()
+  })
+
+  it('has no aria-disabled when idle', () => {
+    render(<GPUInfoPanel capabilities={base} benchmark={bench()} />)
+    expect(screen.getByRole('button', { name: 'Run compute benchmark' })).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('announces the COMPUTE value through a polite live region', () => {
+    render(<GPUInfoPanel capabilities={{ ...base, gpuThroughput: '~1.3 GB/s est.' }} benchmark={bench()} />)
+    const value = screen.getByText('~1.3 GB/s est.')
+    expect(value).toHaveAttribute('aria-live', 'polite')
+    expect(value).not.toContainElement(screen.getByRole('button', { name: 'Run compute benchmark' }))
   })
 })

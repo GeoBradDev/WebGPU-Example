@@ -30,7 +30,23 @@ function Sparkline({ history }) {
   )
 }
 
-export function GPUInfoPanel({ capabilities }) {
+const NO_BENCHMARK = { supported: false, running: false, onRun: undefined }
+
+function BenchmarkButton({ running, onRun }) {
+  return (
+    <button
+      type="button"
+      className="gpu-bench-btn"
+      aria-label="Run compute benchmark"
+      aria-disabled={running ? 'true' : undefined}
+      onClick={running ? undefined : onRun}
+    >
+      RUN
+    </button>
+  )
+}
+
+export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
   const { tier, adapterInfo, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } = capabilities
 
   const deviceLabel =
@@ -67,7 +83,10 @@ export function GPUInfoPanel({ capabilities }) {
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">COMPUTE</span>
-        <span className="gpu-info-val">{gpuThroughput}</span>
+        <span className="gpu-info-val" aria-live="polite">{gpuThroughput}</span>
+        {benchmark.supported ? (
+          <BenchmarkButton running={benchmark.running} onRun={benchmark.onRun} />
+        ) : null}
       </span>
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item gpu-info-secondary">
