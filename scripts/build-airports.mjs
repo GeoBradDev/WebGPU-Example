@@ -19,6 +19,25 @@ const OUT_DIR = resolve(ROOT, 'public/data')
 const DATA_PATH = resolve(OUT_DIR, 'airports.json')
 const META_PATH = resolve(OUT_DIR, 'airports.meta.json')
 
+/**
+ * Metadata record written next to the data. fetchedAt is the full ISO 8601
+ * timestamp in UTC (trailing Z).
+ */
+export function buildMeta({ counts, sourceBytes, outputBytes, now }) {
+  return {
+    source: 'OurAirports',
+    sourceUrl: SOURCE_URL,
+    repo: `https://github.com/${SOURCE_REPO}`,
+    commit: SOURCE_SHA,
+    fetchedAt: now.toISOString(),
+    license: 'Public domain (OurAirports data)',
+    licenseUrl: 'https://ourairports.com/data/',
+    counts,
+    rounding: '3 decimal places',
+    bytes: { source: sourceBytes, output: outputBytes },
+  }
+}
+
 async function main() {
   console.log(`Fetching ${SOURCE_URL}`)
   const res = await fetch(SOURCE_URL)
@@ -37,18 +56,7 @@ async function main() {
   const json = JSON.stringify(data)
   const outputBytes = Buffer.byteLength(json, 'utf8')
 
-  const meta = {
-    source: 'OurAirports',
-    sourceUrl: SOURCE_URL,
-    repo: `https://github.com/${SOURCE_REPO}`,
-    commit: SOURCE_SHA,
-    fetchedAt: new Date().toISOString().slice(0, 10),
-    license: 'Public domain (OurAirports data)',
-    licenseUrl: 'https://ourairports.com/data/',
-    counts,
-    rounding: '3 decimal places',
-    bytes: { source: sourceBytes, output: outputBytes },
-  }
+  const meta = buildMeta({ counts, sourceBytes, outputBytes, now: new Date() })
 
   await mkdir(OUT_DIR, { recursive: true })
   await writeFile(DATA_PATH, json)
