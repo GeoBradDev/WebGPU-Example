@@ -1,3 +1,5 @@
+import { renderBackendLabel, gpuDeviceLabel } from './gpuLabels.js'
+
 function Sparkline({ history }) {
   if (!history || history.length === 0) return null
 
@@ -47,12 +49,12 @@ function BenchmarkButton({ running, onRun }) {
 }
 
 export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
-  const { tier, adapterInfo, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } = capabilities
+  const { tier, adapterInfo, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs } =
+    capabilities
 
-  const deviceLabel =
-    adapterInfo.device || adapterInfo.description || adapterInfo.vendor || adapterInfo.architecture || 'Unknown'
-  const renderLabel =
-    tier === 'no-webgpu' ? 'WebGL Fallback' : tier === 'unknown' ? 'Detecting...' : 'WebGPU'
+  const deviceLabel = gpuDeviceLabel(adapterInfo, renderDevice)
+  // RENDER is the backend deck.gl created; the WebGPU tier only gates compute.
+  const render = renderBackendLabel(renderDevice?.type)
   const isWebGPU = tier === 'webgpu'
   const frameClass = frameTime <= 16 ? 'ok' : frameTime <= 33 ? 'warn' : 'err'
 
@@ -65,7 +67,7 @@ export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item">
         <span className="gpu-info-key">RENDER</span>
-        <span className={`gpu-info-val ${isWebGPU ? 'ok' : 'warn'}`}>{renderLabel}</span>
+        <span className={`gpu-info-val ${render.ok ? 'ok' : 'warn'}`}>{render.text}</span>
       </span>
       <span className="gpu-info-sep">|</span>
       <span className="gpu-info-item">
@@ -82,7 +84,7 @@ export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
       </span>
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item gpu-info-secondary">
-        <span className="gpu-info-key">COMPUTE</span>
+        <span className="gpu-info-key">WEBGPU COMPUTE</span>
         <span className="gpu-info-val" aria-live="polite">{gpuThroughput}</span>
         {/* navigator.gpu can exist with no adapter, so also require the detected tier. */}
         {benchmark.supported && isWebGPU ? (
