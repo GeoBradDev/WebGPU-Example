@@ -70,6 +70,7 @@ Domain skills:
 - `src/App.jsx`: Header takes the derived status; App builds the `status` prop from the hooks and passes `retry` handlers; heatmap `waiting` maps to `NO AIRPORT DATA` (status `blocked` in the panel) when airports failed.
 - `src/App.test.jsx`: heatmap mock gains `status: 'unsupported'`, `retry`; assertions unchanged.
 - `src/App.status.test.jsx` (new): App-level failure, retry, and header tests.
+- `src/App.header.test.jsx` (new): header markup (`role="status"`, `aria-live`, level classes, hidden issues text, `title`) and the heatmap, render, and basemap wiring. Split from `src/App.status.test.jsx` because that file is the frozen defect reproduction and is never edited after it is committed red.
 - `src/index.css`: `.header-status .err`, `.layer-status`, `.layer-status-error` text, `.layer-retry` (+ hover, focus-visible), `.layer-note`, `.panel-alert`, `.basemap-fallback`; narrow block: header status visually hidden instead of `display: none`.
 - `src/styles.test.js`: `TEXT_PAIRS` additions, `.layer-retry` target-size and focus-ring tests.
 - `README.md`: lines AC13 names.

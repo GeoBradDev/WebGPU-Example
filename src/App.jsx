@@ -25,6 +25,7 @@ function Header({ status }) {
     return () => clearInterval(id)
   }, [])
 
+  const issues = status.issues.join(', ')
   const utc = time.toISOString().replace('T', ' ').slice(0, 19) + 'Z'
   const lat = Math.abs(viewport.latitude).toFixed(4) + (viewport.latitude >= 0 ? '°N' : '°S')
   const lon = Math.abs(viewport.longitude).toFixed(4) + (viewport.longitude >= 0 ? '°E' : '°W')
@@ -34,8 +35,14 @@ function Header({ status }) {
       <div className="header-left">
         <span className="classification-badge">UNCLASSIFIED</span>
         <span className="header-sep">◆</span>
-        <span className="header-status">
+        <span
+          className="header-status"
+          role="status"
+          aria-live="polite"
+          title={issues || undefined}
+        >
           SYS&nbsp;<span className={LEVEL_CLASS[status.level]}>{status.level}</span>
+          {issues ? <span className="visually-hidden">: {issues}</span> : null}
         </span>
       </div>
 
