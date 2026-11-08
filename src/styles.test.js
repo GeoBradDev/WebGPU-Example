@@ -139,6 +139,7 @@ const TEXT_PAIRS = [
   { selector: '.header-status', bg: 'header' },
   { selector: '.header-status .ok', bg: 'header' },
   { selector: '.header-status .warn', bg: 'header' },
+  { selector: '.header-status .err', bg: 'header' },
   { selector: '.coord-display', bg: 'header' },
   { selector: '.time-display', bg: 'header' },
   { selector: '.panel-title', bg: 'overMap' },
@@ -163,6 +164,14 @@ const TEXT_PAIRS = [
   { selector: '.gpu-info-sep', bg: 'overMap' },
   { selector: '.gpu-bench-btn', bg: 'overMap' },
   { selector: ".gpu-bench-btn[aria-disabled='true']", bg: 'overMap' },
+  // Issue #10: layer status lines, Retry, WebGPU note, narrow alert, basemap fallback.
+  { selector: '.layer-status', bg: 'overMap' },
+  { selector: '.layer-status-error', bg: 'overMap' },
+  { selector: '.layer-retry', bg: 'overMap' },
+  { selector: '.layer-note', bg: 'overMap' },
+  { selector: '.panel-alert', bg: 'overMap' },
+  { selector: '.basemap-fallback-title', bg: 'overMap' },
+  { selector: '.basemap-fallback-sub', bg: 'overMap' },
 ]
 
 function textRatio({ selector, bg, fg }) {
@@ -270,6 +279,12 @@ describe('target size (WCAG 2.5.8, 24x24)', () => {
     expect(px(d['min-height'])).toBeGreaterThanOrEqual(24)
   })
 
+  it('layer RETRY button is at least 24x24 (issue #10)', () => {
+    const d = rule('.layer-retry')
+    expect(px(d['min-width'])).toBeGreaterThanOrEqual(24)
+    expect(px(d['min-height'])).toBeGreaterThanOrEqual(24)
+  })
+
   it('stress slider input is at least 24px tall', () => {
     expect(px(rule('.stress-slider').height)).toBeGreaterThanOrEqual(24)
   })
@@ -341,5 +356,52 @@ describe('GPU panel clears the feature popup above 1024px', () => {
     expect(declarations(tablet.body)['max-width']).toBe('calc(100vw - 340px)')
     const narrow = innermostRules(mediaBlock('@media (max-width: 640px)')).find((r) => r.selector === '.gpu-info-panel')
     expect(declarations(narrow.body)['max-width']).toBe('calc(100vw - 32px)')
+  })
+})
+
+// Issue #10: the layer RETRY button and the basemap fallback.
+describe('layer RETRY button and basemap fallback', () => {
+  it('shows a 2px accent focus ring on keyboard focus', () => {
+    const d = rule('.layer-retry:focus-visible')
+    expect(d.outline).toBe('2px solid var(--accent)')
+  })
+
+  it('reuses the RUN button look', () => {
+    const retry = rule('.layer-retry')
+    const run = rule('.gpu-bench-btn')
+    expect(retry.border).toBe(run.border)
+    expect(retry.color).toBe(run.color)
+    expect(retry.background).toBe(run.background)
+  })
+
+  it('keeps the basemap fallback from blocking the map', () => {
+    expect(rule('.basemap-fallback')['pointer-events']).toBe('none')
+  })
+
+  it('keeps the basemap fallback on the panel background the contrast model assumes', () => {
+    expect(rule('.basemap-fallback').background).toBe('var(--bg-panel)')
+  })
+})
+
+// Issue #10: on narrow screens the header status leaves the layout but stays
+// in the accessibility tree, so its live region still announces.
+describe('narrow header status', () => {
+  const narrow = () => innermostRules(mediaBlock('@media (max-width: 640px)'))
+
+  it('is not display: none', () => {
+    const hidden = narrow().filter((r) => declarations(r.body).display === 'none')
+    const selectors = hidden.flatMap((r) => r.selector.split(',').map((x) => x.trim()))
+    expect(selectors).not.toContain('.header-status')
+  })
+
+  it('is visually hidden with the clip technique', () => {
+    const r = narrow().find((x) => x.selector === '.header-status')
+    expect(r, 'no .header-status rule in the narrow block').toBeTruthy()
+    const d = declarations(r.body)
+    expect(d.position).toBe('absolute')
+    expect(d.width).toBe('1px')
+    expect(d.height).toBe('1px')
+    expect(d.overflow).toBe('hidden')
+    expect(d['clip-path']).toBe('inset(50%)')
   })
 })
