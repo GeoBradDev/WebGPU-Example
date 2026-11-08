@@ -80,6 +80,9 @@ function useRenderHealth() {
   const onError = useCallback(
     (error) => {
       console.error(error)
+      // After unmount deviceRef is cleared, so a late error (an async pick
+      // rejection, a pending start) must not read as a creation failure.
+      if (!mountedRef.current) return
       if (!deviceRef.current) setRender({ status: 'failed', type: null, renderer: null })
     },
     [setRender]
