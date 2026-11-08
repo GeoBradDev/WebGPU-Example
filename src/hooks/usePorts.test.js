@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { usePorts } from './usePorts.js'
 import { WORLD_PORTS_URL } from '../config/sources.js'
 
@@ -53,5 +53,54 @@ describe('usePorts', () => {
     expect(result.current.error.message).toBe('network down')
     expect(result.current.loaded).toBe(false)
     expect(result.current.ports).toEqual([])
+  })
+})
+
+// Issue #10: a failed load can be retried without a page reload.
+describe('usePorts retry', () => {
+  const okResponse = () => ({ ok: true, json: () => Promise.resolve(GEOJSON) })
+
+  it('clears the error, goes back to loading, and refetches the same URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Server Error' })
+    let release
+    fetchMock.mockImplementationOnce(() => new Promise((r) => { release = r }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(() => usePorts())
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+
+    act(() => result.current.retry())
+    expect(result.current.error).toBeNull()
+    expect(result.current.loaded).toBe(false)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, WORLD_PORTS_URL)
+
+    await act(async () => release(okResponse()))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.ports).toHaveLength(2)
+  })
+
+  it('keeps retry referentially stable across renders', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValue(okResponse()))
+    const { result } = renderHook(() => usePorts())
+    const first = result.current.retry
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    act(() => result.current.retry())
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.retry).toBe(first)
+  })
+
+  it('ignores a request superseded by a retry', async () => {
+    const releases = []
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((r) => releases.push(r))))
+    const { result } = renderHook(() => usePorts())
+    // Retry while the first request is still in flight.
+    act(() => result.current.retry())
+    await waitFor(() => expect(releases).toHaveLength(2))
+    await act(async () => releases[0]({ ok: false, status: 503, statusText: 'Stale' }))
+    expect(result.current.error).toBeNull()
+    await act(async () => releases[1](okResponse()))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.error).toBeNull()
   })
 })

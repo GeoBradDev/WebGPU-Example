@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { OURAIRPORTS_CSV_URL } from '../config/sources.js'
 
 /**
@@ -59,17 +59,20 @@ export function parseAirportCSV(text) {
 }
 
 /**
- * Fetches and parses the OurAirports CSV once on mount.
+ * Fetches and parses the OurAirports CSV on mount and on each retry.
  *
- * Returns { airports, loaded, error }
+ * Returns { airports, loaded, error, retry }
  *   airports - Array<{ lon, lat, name, type }>
  *   loaded   - true after successful fetch
  *   error    - Error if fetch failed, null otherwise
+ *   retry    - stable function that refetches after a failure
  */
 export function useAirports() {
   const [airports, setAirports] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(null)
+  // Bumped by retry to run the load effect again (issue #10).
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -86,8 +89,17 @@ export function useAirports() {
       }
     }
     load()
+    // Also guards a request superseded by a retry.
     return () => { cancelled = true }
+  }, [attempt])
+
+  // Called from an event handler: clears the error, shows loading again, and
+  // refetches the same URL. Stable across renders.
+  const retry = useCallback(() => {
+    setError(null)
+    setLoaded(false)
+    setAttempt((a) => a + 1)
   }, [])
 
-  return { airports, loaded, error }
+  return { airports, loaded, error, retry }
 }
