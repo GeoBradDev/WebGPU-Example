@@ -190,3 +190,17 @@ describe('checkCounts', () => {
     expect(checkCounts(counts)).toEqual({ unknownTypes: [] })
   })
 })
+
+// Issue #9 review F2: a type named like an Object.prototype key must still be counted.
+describe('transformAirports inputByType', () => {
+  it('counts a __proto__ type as its own input type', () => {
+    const { counts } = transformAirports(
+      'type,name,latitude_deg,longitude_deg\nsmall_airport,A,1,2\n__proto__,B,1,2\nconstructor,C,1,2\n'
+    )
+    expect(counts.total).toBe(3)
+    expect(Object.keys(counts.inputByType).sort()).toEqual(['__proto__', 'constructor', 'small_airport'])
+    expect(counts.inputByType.__proto__).toBe(1)
+    expect(counts.inputByType.constructor).toBe(1)
+    expect(checkCounts(counts).unknownTypes.sort()).toEqual(['__proto__', 'constructor'])
+  })
+})
