@@ -595,7 +595,9 @@ body::before {
   font-size: 10px;
   letter-spacing: 0.11em;
   pointer-events: none;
-  max-width: calc(100vw - 32px);
+  /* Keep clear of the 288px popup at left: 20px at every width; the
+     narrow-screen block below widens it again, where the popup is a sheet. */
+  max-width: calc(100vw - 340px);
   flex-wrap: wrap;
   row-gap: 4px;
 }
@@ -635,6 +637,14 @@ body::before {
 
 .gpu-info-val.err {
   color: var(--red);
+}
+
+/* The GPU name can be a long WebGL renderer string; the full text is in title. */
+.gpu-info-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 32ch;
 }
 
 .gpu-info-sep {

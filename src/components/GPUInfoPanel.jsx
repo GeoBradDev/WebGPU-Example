@@ -62,7 +62,9 @@ export function GPUInfoPanel({ capabilities, benchmark = NO_BENCHMARK }) {
     <div className="gpu-info-panel">
       <span className="gpu-info-item gpu-info-secondary">
         <span className="gpu-info-key">GPU</span>
-        <span className="gpu-info-val">{deviceLabel}</span>
+        <span className="gpu-info-val gpu-info-name" title={deviceLabel}>
+          {deviceLabel}
+        </span>
       </span>
       <span className="gpu-info-sep gpu-info-secondary">|</span>
       <span className="gpu-info-item">
