@@ -35,4 +35,9 @@ describe('public/data/airports.json', () => {
     expect(meta.commit).toBe('64af12951161ed52bc733eb4101224643c48850a')
     expect(meta.sourceUrl).toContain(meta.commit)
   })
+
+  // Issue #9 review B1: the fetch time is a full UTC timestamp, not a bare date.
+  it('records fetchedAt as a full ISO timestamp with a Z marker', () => {
+    expect(meta.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/)
+  })
 })
