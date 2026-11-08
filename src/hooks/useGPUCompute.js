@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const COUNT = 65535 * 256  // 16,776,960 floats ~64MB, exactly 65535 workgroups
 const WORKGROUP_SIZE = 256
 const WORKGROUPS = COUNT / WORKGROUP_SIZE  // 65535
+// 128MB traffic per dispatch: 64MB read + 64MB write
+const BYTES_PER_DISPATCH_GB = 0.128
+
+export const BENCHMARK_DISPATCHES = 5
 
 const SHADER = `
 @group(0) @binding(0) var<storage, read_write> data: array<f32>;
@@ -16,75 +20,122 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 `
 
+export function median(values) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+// CPU-timed, so it includes submit and callback latency: an estimate.
+export function formatThroughput(seconds) {
+  return `~${(BYTES_PER_DISPATCH_GB / seconds).toFixed(1)} GB/s est.`
+}
+
+function isHidden() {
+  return document.visibilityState === 'hidden'
+}
+
 export function useGPUCompute() {
-  const [state, setState] = useState({ throughput: '--', supported: false })
+  const [state, setState] = useState(() => ({
+    throughput: '--',
+    supported: Boolean(navigator.gpu),
+    running: false,
+  }))
 
-  useEffect(() => {
-    if (!navigator.gpu) return
+  const activeRef = useRef(false)
+  const stopRef = useRef(false)
+  const mountedRef = useRef(false)
+  const resourcesRef = useRef({ buffer: null, device: null })
 
-    let intervalId = null
-    let device = null
-    let buf = null
-
-    async function init() {
-      try {
-        const adapter = await navigator.gpu.requestAdapter()
-        if (!adapter) return
-
-        device = await adapter.requestDevice()
-
-        buf = device.createBuffer({
-          size: COUNT * 4,
-          usage: GPUBufferUsage.STORAGE,
-          mappedAtCreation: true,
-        })
-        new Float32Array(buf.getMappedRange()).fill(1.0)
-        buf.unmap()
-
-        const module = device.createShaderModule({ code: SHADER })
-        const pipeline = device.createComputePipeline({
-          layout: 'auto',
-          compute: { module, entryPoint: 'main' },
-        })
-        const bindGroup = device.createBindGroup({
-          layout: pipeline.getBindGroupLayout(0),
-          entries: [{ binding: 0, resource: { buffer: buf } }],
-        })
-
-        setState({ throughput: '...', supported: true })
-
-        intervalId = setInterval(async () => {
-          try {
-            const t0 = performance.now()
-            const encoder = device.createCommandEncoder()
-            const pass = encoder.beginComputePass()
-            pass.setPipeline(pipeline)
-            pass.setBindGroup(0, bindGroup)
-            pass.dispatchWorkgroups(WORKGROUPS)
-            pass.end()
-            device.queue.submit([encoder.finish()])
-            await device.queue.onSubmittedWorkDone()
-            const elapsed = (performance.now() - t0) / 1000
-            // 128MB traffic per dispatch: 64MB read + 64MB write
-            const gbps = (0.128 / elapsed).toFixed(1)
-            setState({ throughput: `${gbps} GB/s`, supported: true })
-          } catch {
-            setState({ throughput: '--', supported: false })
-          }
-        }, 1000)
-      } catch {
-        setState({ throughput: '--', supported: false })
-      }
-    }
-
-    init()
-
-    return () => {
-      if (intervalId) clearInterval(intervalId)
-      buf?.destroy()
-      device?.destroy()
-    }
+  const release = useCallback(() => {
+    const res = resourcesRef.current
+    res.buffer?.destroy()
+    res.device?.destroy()
+    res.buffer = null
+    res.device = null
   }, [])
 
-  return state
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      stopRef.current = true
+      release()
+    }
+  }, [release])
+
+  const run = useCallback(async () => {
+    if (activeRef.current || !navigator.gpu || isHidden()) return
+    activeRef.current = true
+    stopRef.current = false
+
+    const update = (next) => {
+      if (mountedRef.current) setState((s) => ({ ...s, ...next }))
+    }
+    const onVisibility = () => {
+      if (isHidden()) stopRef.current = true
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    update({ running: true, throughput: 'Running...' })
+
+    const res = resourcesRef.current
+    try {
+      const adapter = await navigator.gpu.requestAdapter()
+      if (!adapter) {
+        update({ supported: false, throughput: '--' })
+        return
+      }
+
+      res.device = await adapter.requestDevice()
+      const device = res.device
+
+      res.buffer = device.createBuffer({
+        size: COUNT * 4,
+        usage: GPUBufferUsage.STORAGE,
+        mappedAtCreation: true,
+      })
+      new Float32Array(res.buffer.getMappedRange()).fill(1.0)
+      res.buffer.unmap()
+
+      const module = device.createShaderModule({ code: SHADER })
+      const pipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: { module, entryPoint: 'main' },
+      })
+      const bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: { buffer: res.buffer } }],
+      })
+
+      const timings = []
+      for (let k = 0; k < BENCHMARK_DISPATCHES; k++) {
+        if (stopRef.current) break
+        const t0 = performance.now()
+        const encoder = device.createCommandEncoder()
+        const pass = encoder.beginComputePass()
+        pass.setPipeline(pipeline)
+        pass.setBindGroup(0, bindGroup)
+        pass.dispatchWorkgroups(WORKGROUPS)
+        pass.end()
+        device.queue.submit([encoder.finish()])
+        await device.queue.onSubmittedWorkDone()
+        timings.push((performance.now() - t0) / 1000)
+      }
+
+      if (stopRef.current || timings.length < BENCHMARK_DISPATCHES) {
+        update({ throughput: 'Stopped' })
+      } else {
+        update({ throughput: formatThroughput(median(timings)) })
+      }
+    } catch {
+      update({ throughput: 'Failed' })
+    } finally {
+      document.removeEventListener('visibilitychange', onVisibility)
+      release()
+      activeRef.current = false
+      update({ running: false })
+    }
+  }, [release])
+
+  return { ...state, run }
 }
