@@ -116,7 +116,8 @@ export function transformAirports(csvText) {
   const typeIndex = new Map(INCLUDED_TYPES.map((t, i) => [t, i]))
   const data = { version: 1, types: [...INCLUDED_TYPES], lon: [], lat: [], name: [], type: [] }
   const byType = Object.fromEntries(INCLUDED_TYPES.map((t) => [t, 0]))
-  const inputByType = {}
+  // Map, not a plain object, so types like __proto__ are counted (review F2).
+  const inputByType = new Map()
   let total = 0
   let droppedType = 0
   let droppedCoords = 0
@@ -126,7 +127,7 @@ export function transformAirports(csvText) {
     if (isBlankRow(row)) continue
     total++
     const type = row[col.type] ?? ''
-    inputByType[type] = (inputByType[type] ?? 0) + 1
+    inputByType.set(type, (inputByType.get(type) ?? 0) + 1)
 
     // Anything not explicitly included is dropped, including a new upstream type.
     const t = typeIndex.get(type)
@@ -149,7 +150,15 @@ export function transformAirports(csvText) {
 
   return {
     data,
-    counts: { total, included: data.type.length, droppedType, droppedCoords, byType, inputByType },
+    counts: {
+      total,
+      included: data.type.length,
+      droppedType,
+      droppedCoords,
+      byType,
+      // Object.fromEntries defines own data properties, so __proto__ survives.
+      inputByType: Object.fromEntries(inputByType),
+    },
   }
 }
 
