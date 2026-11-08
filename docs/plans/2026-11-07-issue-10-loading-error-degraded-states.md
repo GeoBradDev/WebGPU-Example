@@ -31,7 +31,7 @@ Domain skills:
 2. Retry without reload. Pressing RETRY calls the hook's `retry`, which clears the error, sets the layer back to loading, and issues a new `fetch` of the same URL; on success the count shows and the data reaches the map. No page reload. `retry` is referentially stable across renders. A request superseded by a retry or by unmount never writes state.
 3. Focus after Retry. Pressing RETRY moves focus to that layer's checkbox before the button unmounts, so keyboard focus is never dropped to `body`.
 4. Heatmap states. `useGPUHeatmap(airports)` returns `{ canvas, computeMs, supported, error, status, retry }` with `status` one of:
-   - `unsupported`: `navigator.gpu` is absent (known synchronously at first render) or `requestAdapter()` resolves `null`. `supported` is `false` only in this state.
+   - `unsupported`: `navigator.gpu` is absent (known synchronously at first render), or `requestAdapter()` resolves `null` or throws. The adapter is probed once at mount, independent of airports (so a null adapter is found even when airports fail or load empty), and the compute still makes its own adapter request. `supported` is `false` only in this state, and retry never leaves it.
    - `waiting`: WebGPU is present and `airports` is empty.
    - `computing`: airports are present and the compute for the current attempt has not finished.
    - `ready`: compute finished with no error; `canvas` is the data URL and `computeMs` is set.
@@ -92,7 +92,7 @@ Domain skills:
 - MapLibre also fires `error` for sprite or glyph failures; the before-`load` rule may flag a basemap that partly drew. Accepted: if the style JSON loads but its sprite fails before `load`, the message shows until `onLoad` clears it.
 - deck's `onError` receives non-device errors too; only pre-init errors mark RENDER failed.
 - luma.gl resolves `device.lost` on our own unmount/destroy (reason `destroyed`) and on context loss (also reason `destroyed`), so the unmount guard, not the reason, separates them.
-- The heatmap row now appears before success; a WebGPU browser with no adapter shows `AWAITING AIRPORTS`/`COMPUTING...` until `requestAdapter` resolves `null`, then the row hides and the note shows.
+- The heatmap row now appears before success; a WebGPU browser with no adapter shows `AWAITING AIRPORTS` (or `COMPUTING...`) only until the mount-time adapter probe resolves `null`, then the row hides and the note shows, whether or not airports ever load.
 - LOADING includes render `detecting`; a deck that never calls back or errors leaves LOADING. Accepted: that is the truth.
 - Live regions inside the collapsed narrow panel body (`hidden`) do not announce; the header status (visually hidden, not `display: none`) covers that.
 - Not done: retry for the basemap; caching or worker parsing for airports (issue #9).

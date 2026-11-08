@@ -97,6 +97,7 @@ const NO_RESULT = { attempt: -1, status: null, canvas: null, computeMs: null, er
  *
  * status (issue #10):
  *   'unsupported' - navigator.gpu is absent, or requestAdapter() resolved null
+ *                   or threw (probed once at mount, and again by each compute)
  *   'waiting'     - WebGPU is present and airports are empty
  *   'computing'   - the compute for the current attempt has not finished
  *   'ready'       - finished with no error; canvas and computeMs are set
@@ -111,8 +112,30 @@ export function useGPUHeatmap(airports) {
   const [gpuPresent] = useState(() => Boolean(navigator.gpu))
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState(NO_RESULT)
+  // 'pending' | 'ok' | 'none'. navigator.gpu can exist with no adapter, so
+  // probe once at mount, independent of airports; a throw counts as none,
+  // like useGPUCapabilities.
+  const [probe, setProbe] = useState('pending')
   const startedRef = useRef(-1)
   const runningRef = useRef(false)
+
+  useEffect(() => {
+    if (!navigator.gpu) return
+    let cancelled = false
+    Promise.resolve()
+      .then(() => navigator.gpu.requestAdapter())
+      .then(
+        (adapter) => {
+          if (!cancelled) setProbe(adapter ? 'ok' : 'none')
+        },
+        () => {
+          if (!cancelled) setProbe('none')
+        }
+      )
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (startedRef.current === attempt || airports.length === 0) return
@@ -290,7 +313,7 @@ export function useGPUHeatmap(airports) {
   }, [])
 
   let status
-  if (!gpuPresent || result.status === 'unsupported') status = 'unsupported'
+  if (!gpuPresent || probe === 'none' || result.status === 'unsupported') status = 'unsupported'
   else if (airports.length === 0) status = 'waiting'
   else if (result.attempt === attempt) status = result.status
   else status = 'computing'
