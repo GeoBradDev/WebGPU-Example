@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { useMapStore } from './store/mapStore.js'
-import { OURAIRPORTS_CSV_URL } from './config/sources.js'
+import { AIRPORTS_DATA_URL } from './config/sources.js'
 import App from './App.jsx'
 
 // Issue #10 review finding A: an airports file that loads with 0 rows leaves
@@ -18,7 +18,14 @@ vi.mock('./hooks/useGPUHeatmap.js', () => ({
       : { canvas: null, computeMs: null, supported: true, error: null, status: 'waiting', retry: () => {} },
 }))
 
-const HEADER_ONLY_CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n'
+const EMPTY_AIRPORTS = {
+  version: 1,
+  types: ['large_airport', 'medium_airport', 'small_airport'],
+  lon: [],
+  lat: [],
+  name: [],
+  type: [],
+}
 const GEOJSON = { type: 'FeatureCollection', features: [] }
 
 beforeEach(() => {
@@ -27,8 +34,8 @@ beforeEach(() => {
   vi.stubGlobal(
     'fetch',
     vi.fn((url) =>
-      url === OURAIRPORTS_CSV_URL
-        ? Promise.resolve({ ok: true, text: () => Promise.resolve(HEADER_ONLY_CSV) })
+      url === AIRPORTS_DATA_URL
+        ? Promise.resolve({ ok: true, json: () => Promise.resolve(EMPTY_AIRPORTS) })
         : Promise.resolve({ ok: true, json: () => Promise.resolve(GEOJSON) })
     )
   )

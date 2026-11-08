@@ -1,0 +1,34 @@
+{
+  "source": "OurAirports",
+  "sourceUrl": "https://raw.githubusercontent.com/davidmegginson/ourairports-data/64af12951161ed52bc733eb4101224643c48850a/airports.csv",
+  "repo": "https://github.com/davidmegginson/ourairports-data",
+  "commit": "64af12951161ed52bc733eb4101224643c48850a",
+  "fetchedAt": "2026-11-08T05:00:09.556Z",
+  "license": "Public domain (OurAirports data)",
+  "licenseUrl": "https://ourairports.com/data/",
+  "counts": {
+    "total": 86347,
+    "included": 48072,
+    "droppedType": 38275,
+    "droppedCoords": 0,
+    "byType": {
+      "large_airport": 1175,
+      "medium_airport": 4107,
+      "small_airport": 42790
+    },
+    "inputByType": {
+      "heliport": 23282,
+      "small_airport": 42790,
+      "closed": 13657,
+      "seaplane_base": 1274,
+      "medium_airport": 4107,
+      "balloonport": 62,
+      "large_airport": 1175
+    }
+  },
+  "rounding": "3 decimal places",
+  "bytes": {
+    "source": 12758284,
+    "output": 1967855
+  }
+}

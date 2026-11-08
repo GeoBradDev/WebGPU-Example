@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMapStore } from './store/mapStore.js'
-import { OURAIRPORTS_CSV_URL, WORLD_PORTS_URL } from './config/sources.js'
+import { AIRPORTS_DATA_URL, WORLD_PORTS_URL } from './config/sources.js'
 import App from './App.jsx'
 
 // Issue #10 reproduction: when the airports (or ports) fetch fails, the UI
@@ -29,22 +29,29 @@ vi.mock('./hooks/useGPUHeatmap.js', () => ({
       : { canvas: null, computeMs: null, supported: true, error: null, status: 'waiting', retry: heatmapRetry },
 }))
 
-const CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n1,KLAX,large_airport,LAX,33.9,-118.4\n'
+const AIRPORTS = {
+  version: 1,
+  types: ['large_airport', 'medium_airport', 'small_airport'],
+  lon: [-118.4],
+  lat: [33.9],
+  name: ['LAX'],
+  type: [0],
+}
 const GEOJSON = {
   type: 'FeatureCollection',
   features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [4.4, 51.9] }, properties: { PORT_NAME: 'Rotterdam' } }],
 }
 
-const okCsv = () => Promise.resolve({ ok: true, text: () => Promise.resolve(CSV) })
+const okAirports = () => Promise.resolve({ ok: true, json: () => Promise.resolve(AIRPORTS) })
 const okJson = () => Promise.resolve({ ok: true, json: () => Promise.resolve(GEOJSON) })
 
 function stubFetch({ airportsFail = 0, portsFail = 0 } = {}) {
   let airportCalls = 0
   let portCalls = 0
   const fetchMock = vi.fn((url) => {
-    if (url === OURAIRPORTS_CSV_URL) {
+    if (url === AIRPORTS_DATA_URL) {
       airportCalls++
-      return airportCalls <= airportsFail ? Promise.reject(new TypeError('Failed to fetch')) : okCsv()
+      return airportCalls <= airportsFail ? Promise.reject(new TypeError('Failed to fetch')) : okAirports()
     }
     portCalls++
     return portCalls <= portsFail
@@ -105,7 +112,7 @@ describe('App with a failed data load', () => {
     expect(screen.queryByRole('button', { name: 'Retry Airports' })).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Airports layer' })).toHaveFocus()
 
-    expect(fetchMock.mock.calls.filter(([url]) => url === OURAIRPORTS_CSV_URL)).toHaveLength(2)
+    expect(fetchMock.mock.calls.filter(([url]) => url === AIRPORTS_DATA_URL)).toHaveLength(2)
     expect(fetchMock.mock.calls.filter(([url]) => url === WORLD_PORTS_URL)).toHaveLength(1)
     expect(screen.getByTestId('map-view')).toBe(mapBefore)
     expect(mapBefore).toHaveTextContent('airports:1 ports:1')

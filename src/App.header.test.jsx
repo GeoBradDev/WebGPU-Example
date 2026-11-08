@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { useMapStore } from './store/mapStore.js'
-import { OURAIRPORTS_CSV_URL } from './config/sources.js'
+import { AIRPORTS_DATA_URL } from './config/sources.js'
 import App from './App.jsx'
 
 // Issue #10: header status markup and the App wiring of heatmap, render, and
@@ -12,17 +12,24 @@ const heatmapState = vi.hoisted(() => ({ current: null }))
 vi.mock('./hooks/useGPUHeatmap.js', () => ({ useGPUHeatmap: () => heatmapState.current }))
 
 const READY = { canvas: 'data:,', computeMs: 3, supported: true, error: null, status: 'ready', retry: () => {} }
-const CSV = 'id,ident,type,name,latitude_deg,longitude_deg\n1,KLAX,large_airport,LAX,33.9,-118.4\n'
+const AIRPORTS = {
+  version: 1,
+  types: ['large_airport', 'medium_airport', 'small_airport'],
+  lon: [-118.4],
+  lat: [33.9],
+  name: ['LAX'],
+  type: [0],
+}
 const GEOJSON = { type: 'FeatureCollection', features: [] }
 
 function stubFetch({ airportsFail = false } = {}) {
   vi.stubGlobal(
     'fetch',
     vi.fn((url) => {
-      if (url === OURAIRPORTS_CSV_URL) {
+      if (url === AIRPORTS_DATA_URL) {
         return airportsFail
           ? Promise.reject(new TypeError('Failed to fetch'))
-          : Promise.resolve({ ok: true, text: () => Promise.resolve(CSV) })
+          : Promise.resolve({ ok: true, json: () => Promise.resolve(AIRPORTS) })
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve(GEOJSON) })
     })
