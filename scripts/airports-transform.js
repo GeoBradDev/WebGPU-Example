@@ -8,9 +8,13 @@ export const EXCLUDED_TYPES = ['closed', 'heliport', 'seaplane_base', 'balloonpo
 const REQUIRED_COLUMNS = ['type', 'name', 'latitude_deg', 'longitude_deg']
 
 /**
- * RFC 4180 CSV parser over the whole text: quoted fields with commas, doubled
- * quotes, and newlines; CRLF or LF row endings; optional trailing newline and
- * leading UTF-8 BOM.
+ * Strict RFC 4180 CSV parser over the whole text: quoted fields with commas,
+ * doubled quotes, and newlines; CRLF or LF row endings; optional trailing
+ * newline and leading UTF-8 BOM.
+ *
+ * Throws, naming the 1-based physical line, on a quote inside an unquoted
+ * field, on any character other than a delimiter, newline, or end of input
+ * after a closing quote, and on end of input inside a quoted field.
  *
  * @param {string} text
  * @returns {string[][]}
@@ -20,8 +24,15 @@ export function parseCSV(text) {
   let row = []
   let field = ''
   let inQuotes = false
+  // The field just closed a quoted value; only a delimiter, newline, or end may follow.
+  let afterQuote = false
+  let line = 1
+  let quoteLine = 1
   let i = text.charCodeAt(0) === 0xfeff ? 1 : 0
   const n = text.length
+  const fail = (msg, at = line) => {
+    throw new Error(`Malformed CSV at line ${at}: ${msg}`)
+  }
 
   while (i < n) {
     const ch = text[i]
@@ -33,30 +44,40 @@ export function parseCSV(text) {
           continue
         }
         inQuotes = false
+        afterQuote = true
       } else {
+        if (ch === '\n') line++
         field += ch
       }
       i++
       continue
     }
-    if (ch === '"') {
-      inQuotes = true
-    } else if (ch === ',') {
+    if (ch === ',') {
       row.push(field)
       field = ''
+      afterQuote = false
     } else if (ch === '\n' || ch === '\r') {
       row.push(field)
       rows.push(row)
       row = []
       field = ''
+      afterQuote = false
       if (ch === '\r' && text[i + 1] === '\n') i++
+      line++
+    } else if (afterQuote) {
+      fail(`unexpected character after closing quote: ${JSON.stringify(ch)}`)
+    } else if (ch === '"') {
+      if (field !== '') fail('quote inside an unquoted field')
+      inQuotes = true
+      quoteLine = line
     } else {
       field += ch
     }
     i++
   }
+  if (inQuotes) fail('end of input inside a quoted field', quoteLine)
   // Last row without a trailing newline.
-  if (field !== '' || row.length > 0) {
+  if (field !== '' || afterQuote || row.length > 0) {
     row.push(field)
     rows.push(row)
   }
@@ -130,4 +151,21 @@ export function transformAirports(csvText) {
     data,
     counts: { total, included: data.type.length, droppedType, droppedCoords, byType, inputByType },
   }
+}
+
+/**
+ * Guard for the build script: refuses an empty snapshot and reports upstream
+ * types that are neither included nor excluded (they are dropped, but should
+ * be looked at).
+ *
+ * @param {{ included: number, inputByType: Object<string, number> }} counts
+ * @returns {{ unknownTypes: string[] }}
+ */
+export function checkCounts(counts) {
+  if (!counts || counts.included === 0) {
+    throw new Error('No airports were included; refusing to write an empty snapshot')
+  }
+  const known = new Set([...INCLUDED_TYPES, ...EXCLUDED_TYPES])
+  const unknownTypes = Object.keys(counts.inputByType ?? {}).filter((t) => !known.has(t))
+  return { unknownTypes }
 }

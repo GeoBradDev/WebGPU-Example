@@ -7,7 +7,7 @@
 import { writeFile, mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
-import { transformAirports } from './airports-transform.js'
+import { transformAirports, checkCounts } from './airports-transform.js'
 
 export const SOURCE_REPO = 'davidmegginson/ourairports-data'
 export const SOURCE_SHA = '64af12951161ed52bc733eb4101224643c48850a'
@@ -28,6 +28,11 @@ async function main() {
   const sourceBytes = Buffer.byteLength(csvText, 'utf8')
 
   const { data, counts } = transformAirports(csvText)
+  // Throws before anything is written when no airports were included.
+  const { unknownTypes } = checkCounts(counts)
+  if (unknownTypes.length > 0) {
+    console.warn(`Warning: dropped input types not in INCLUDED_TYPES or EXCLUDED_TYPES: ${unknownTypes.join(', ')}`)
+  }
   const json = JSON.stringify(data)
   const outputBytes = Buffer.byteLength(json, 'utf8')
 
