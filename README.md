@@ -7,8 +7,8 @@ Built with React 19, Vite, MapLibre GL (through `react-map-gl`), deck.gl (`@deck
 ## What it does
 
 - **Basemap:** CARTO dark-matter vector style rendered by MapLibre GL.
-- **Airports layer:** large and medium airports (5,282) from the bundled OurAirports snapshot, drawn as amber points sized in meters so they stay small at world zoom and grow as you zoom in (large airports twice the radius of medium ones). The layer count is the number of points drawn. Click a point to see its properties.
-- **Sea ports layer:** the bundled ports GeoJSON, drawn as green points. Click a point to see its properties.
+- **Airports layer:** large and medium airports (5,282) from the bundled OurAirports snapshot, drawn as amber points sized in meters and clamped to 1.5 to 8 px: at world zoom they all draw as small dots of the same size, and zoomed in, large airports draw larger than medium ones until both reach 8 px. The layer count is the number of points drawn. Click a point to see its properties.
+- **Sea ports layer:** the bundled ports GeoJSON, drawn as green points sized in meters and clamped to 2 to 8 px, so they are small dots at world zoom and grow as you zoom in. Click a point to see its properties.
 - **Heatmap layer (WebGPU only):** a two-pass compute shader bins all included airport positions (large, medium, and small: 48,072) into a 1024 x 512 grid and colorizes it into a bitmap overlay. It runs once, after the airports load. The layer toggle appears whenever WebGPU is present, with a status line: `AWAITING AIRPORTS`, `NO AIRPORT DATA` (the airports fetch failed, or the airports file loaded with 0 airports), `COMPUTING...`, `READY`, or `COMPUTE FAILED` with a `RETRY` button (thrown errors, asynchronous validation or out-of-memory errors, and device loss all count as failures). Without WebGPU the toggle is hidden and the panel says `WEBGPU UNAVAILABLE: HEATMAP AND COMPUTE BENCHMARK OFF`.
 - **Load states:** each data layer shows `LOADING...`, its feature count, or `LOAD FAILED` with a `RETRY` button that refetches without reloading the page. The header shows `SYS LOADING`, `SYS NOMINAL`, or `SYS DEGRADED` (any failed layer, heatmap failure, missing WebGPU, failed or lost render device, or failed basemap; the list is in its tooltip and announced to screen readers). If the basemap style fails to load, the map area says `BASEMAP UNAVAILABLE` and the data layers still draw. If the map cannot be created at all (no usable WebGL2), it says `MAP UNAVAILABLE` / `WEBGL2 REQUIRED` and RENDER shows `Failed`.
 - **Stress test:** a slider from 0 to 5,000,000 points in steps of 100,000. Points are generated on the main thread 150 ms after the slider stops moving, then drawn as a deck.gl binary attribute layer.
@@ -43,7 +43,7 @@ Open the URL Vite prints (default `http://localhost:5173`). No API keys or envir
 | `npm run lint` | ESLint over the repo (`eslint.config.js`, includes `react-hooks` rules). |
 | `npm test` | Run the Vitest suite once (jsdom). Includes a real `vite build` that checks the MapLibre worker is bundled. |
 | `npm run test:watch` | Vitest in watch mode. |
-| `npm run data:airports` | Rebuild `public/data/airports.json` and `airports.meta.json` from OurAirports at the pinned commit in `scripts/build-airports.mjs`. Needs network and Node 20+. Not run in CI; commit the regenerated files. |
+| `npm run data:airports` | Rebuild `public/data/airports.json` and `airports.meta.json` from OurAirports at the pinned commit in `scripts/build-airports.mjs`. Needs network and Node 20+. Refuses to write when no airports are included and warns about upstream types it does not know. Not run in CI; commit the regenerated files. |
 
 CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run lint`, `npm test`, `npm run build`, and `npm audit --omit=dev --audit-level=high` on pushes to `main` and on pull requests. It does not run `npm run data:airports` or fetch airport data.
 
