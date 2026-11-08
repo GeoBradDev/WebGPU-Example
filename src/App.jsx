@@ -89,9 +89,12 @@ export default function App() {
     basemapFailed,
   })
 
-  // The heatmap waits on airports; once they failed it has nothing to wait for.
+  // The heatmap waits on airports; once they failed or loaded empty it has
+  // nothing to wait for.
+  const airportsSettledEmpty =
+    airportsStatus === 'error' || (airportsStatus === 'loaded' && airports.length === 0)
   const heatmapPanelStatus =
-    heatmap.status === 'waiting' && airportsStatus === 'error' ? 'blocked' : heatmap.status
+    heatmap.status === 'waiting' && airportsSettledEmpty ? 'blocked' : heatmap.status
   const layerStatus = {
     airports: { status: airportsStatus, count: airports.length, error: airportsQuery.error, onRetry: airportsQuery.retry },
     ports: { status: portsStatus, count: ports.length, error: portsQuery.error, onRetry: portsQuery.retry },
