@@ -114,6 +114,22 @@ describe('buildLayers', () => {
     expect(layers.map((l) => l.id)).not.toContain('ports')
   })
 
+  // Issue #9 review C1: 5 px ports buried European country labels at zoom 2.
+  it('ports layer sizes points in meters, clamped in pixels', () => {
+    const layers = buildLayers(
+      { airports: false, ports: true },
+      { airports: [], ports: [mockPort] },
+      vi.fn()
+    )
+    const { props } = layers.find((l) => l.id === 'ports')
+    expect(props.radiusUnits).toBe('meters')
+    expect(props.getRadius).toBeGreaterThan(0)
+    expect(props.radiusMinPixels).toBeGreaterThan(0)
+    expect(props.radiusMinPixels).toBeLessThanOrEqual(2)
+    expect(props.radiusMaxPixels).toBeGreaterThan(props.radiusMinPixels)
+    expect(props.radiusMaxPixels).toBeLessThanOrEqual(8)
+  })
+
   it('ports onClick wraps object in properties envelope', () => {
     const handler = vi.fn()
     const layers = buildLayers(
