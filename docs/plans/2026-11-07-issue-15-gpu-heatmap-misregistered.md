@@ -23,14 +23,15 @@ Rejected: `_imageCoordinateSystem: COORDINATE_SYSTEM.LNGLAT` with bounds `[-180,
 Checkable form:
 - 1a. For any latitude in [-80, 80], the cell row the binning maps it to, when drawn by a BitmapLayer stretched linearly in Mercator Y over the layer's bounds, covers a latitude band that contains the input latitude (unit test over a sweep, plus named reference points 0, 40, 60, 65, -33.9).
 - 1b. In a real browser with a WebGPU adapter (Chromium, `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader`), screenshots with HEATMAP and AIRPORTS on at about 0N (West Africa), 40N (US mid-Atlantic), and 65N (Scandinavia or Alaska) show hot spots on the airport dots, not shifted north.
-- 2a. One JS module owns the Mercator latitude limit, the grid dimensions used for rows, the lat-to-row formula, and the BitmapLayer bounds. `buildLayers` uses its bounds and sets no `_imageCoordinateSystem`. The accumulate shader's WGSL binning code is generated from that module's constants (no second hand-typed copy of 85.051129 or of the row formula).
-- 2b. A unit test asserts the BitmapLayer's bounds equal the helper's bounds, that the numeric constants embedded in the generated WGSL equal the JS constants, and that the old linear `(90.0 - lat) / 180.0` mapping is gone.
+- 2a. One JS module owns the Mercator latitude limit, the grid dimensions used for rows, the lat-to-row formula, and the BitmapLayer bounds. `buildLayers` uses its bounds and sets no `_imageCoordinateSystem`. The accumulate shader's WGSL binning code is generated from that module's constants (no second hand-typed copy of 85.051129). The WGSL bodies do restate the row and column formulas in WGSL syntax, so a test executes the generated WGSL (2b) to prove they match the JS helpers.
+- 2b. A unit test asserts the BitmapLayer's bounds equal the helper's bounds, that the numeric constants embedded in the generated WGSL equal the JS constants, and that the old linear `(90.0 - lat) / 180.0` mapping is gone. A second test translates the generated WGSL `lonToCol` and `latToRow` mechanically into JS (failing on any token it does not know) and asserts they return the same values as the JS helpers at the reference points, at and beyond +/-85.051129 and +/-90, and over sweeps of lat -85..85 and lon -180..180.
 - 2c. Latitudes beyond +/-85.051129 (and +/-90) clamp to the first or last row instead of producing NaN or an out-of-range row.
 
 ## Files that change
 
 - `src/layers/heatmapProjection.js` (new): exports `MERCATOR_MAX_LAT = 85.051129`, `HEATMAP_GRID_W = 1024`, `HEATMAP_GRID_H = 512`, `HEATMAP_BOUNDS` (`[-180, -MERCATOR_MAX_LAT, 180, MERCATOR_MAX_LAT]`), `mercatorY(lat)` (`ln(tan(pi/4 + lat*pi/360))` with lat clamped to +/-MERCATOR_MAX_LAT), `latToRowFraction(lat)` (`(1 - mercatorY(lat) / mercatorY(MERCATOR_MAX_LAT)) / 2`, 0 at the north edge, 1 at the south edge), `latToRow(lat, gridH = HEATMAP_GRID_H)` (floor of fraction times gridH, clamped to [0, gridH-1]), `lonToCol(lon, gridW = HEATMAP_GRID_W)` (same as the current shader), and `binningWGSL()` (or a constant string) returning WGSL functions `lonToCol(lon: f32) -> u32` and `latToRow(lat: f32) -> u32` that use the same formula, with the limit, its Mercator Y, and the grid sizes interpolated from the JS values as f32 literals (always with a decimal point).
 - `src/layers/heatmapProjection.test.js` (new): reference points and the agreement sweep (1a), clamping (2c), WGSL constants (2b).
+- `src/layers/heatmapProjection.wgsl.test.js` (new, added after review): executes the generated WGSL binning functions via a strict WGSL-to-JS translator and compares them with the JS helpers (2b).
 - `src/hooks/useGPUHeatmap.js`: import the grid sizes and WGSL from the helper, drop the local `GRID_W`/`GRID_H` constants, call the generated `lonToCol`/`latToRow` in `ACCUMULATE_SHADER`, and export `ACCUMULATE_SHADER` so a test can inspect it. Nothing else in the hook changes.
 - `src/hooks/useGPUHeatmap.test.js`: add a test that `ACCUMULATE_SHADER` contains the generated binning code and no `(90.0 - lat) / 180.0`.
 - `src/layers/index.js`: `bounds: HEATMAP_BOUNDS`.
@@ -46,7 +47,7 @@ Checkable form:
 
 ## Risks
 
-- f32 precision in WGSL: `log(tan(...))` near 85 degrees is fine in f32; the clamp to +/-MERCATOR_MAX_LAT keeps `tan` finite. Rows are floored after clamping the fraction to [0, 1) times gridH, then clamped to gridH-1.
+- f32 precision in WGSL: `log(tan(...))` near 85 degrees is fine in f32; the clamp to +/-MERCATOR_MAX_LAT keeps `tan` finite. The latitude is clamped to +/-MERCATOR_MAX_LAT first, so the fraction is always finite and in [0, 1]; the row is the floor of fraction times gridH, then clamped to [0, gridH-1] (this maps the south limit, fraction 1, to the last row).
 - Floating literal formatting: a JS integer like 1024 interpolated as `1024` is an abstract int in WGSL; emit `1024.0` style f32 literals where floats are expected to avoid type errors. The live drive proves the shader compiles.
 - Cell shape: a 1024x512 grid over the square Mercator world gives cells twice as tall as wide. Kept as is to stay in scope; alignment is what the issue asks for.
 - Do not touch the hook's run-once behavior, buffer lifetimes, or the COLORIZE shader. Do not touch other prior work (a11y, layout, contrast tests, benchmark, RENDER label).
@@ -56,5 +57,5 @@ What I chose not to do: change grid resolution, change the color ramp, add zoom-
 ## Proof
 
 - Criterion 1a, 2c: `src/layers/heatmapProjection.test.js`.
-- Criterion 2a, 2b: `src/layers/index.test.js` and `src/hooks/useGPUHeatmap.test.js` plus `heatmapProjection.test.js` WGSL-constant tests.
+- Criterion 2a, 2b: `src/layers/index.test.js` and `src/hooks/useGPUHeatmap.test.js` plus `heatmapProjection.test.js` WGSL-constant tests, and `heatmapProjection.wgsl.test.js`, which executes the generated WGSL row and column formulas and compares them with the JS helpers (shown to fail when the WGSL `/ 2.0` becomes `* 2.0`, when `1.0 -` is dropped, or when `+ 180.0` is dropped).
 - Criterion 1b: live drive in Playwright Chromium with a SwiftShader WebGPU adapter: HEATMAP and AIRPORTS on, screenshots at about 0N (e.g. lon 0, lat 7, zoom 4), 40N (lon -76, lat 39, zoom 5), and 65N (lon 18, lat 63, zoom 4 or Alaska lon -150, lat 63), plus a numeric check in the page: for a few airports, the heat pixel's screen position (from the rendered bitmap) is within one cell of `map.project([lon, lat])`. Before-and-after screenshots at 60N or 65N show the shift is gone.
