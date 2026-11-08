@@ -11,8 +11,12 @@ import { useGPUCapabilities } from '../hooks/useGPUCapabilities.js'
 import { useGPUCompute } from '../hooks/useGPUCompute.js'
 import { GPUInfoPanel } from './GPUInfoPanel.jsx'
 
-function DeckGLOverlay({ layers }) {
-  const overlay = useControl(() => new MapboxOverlay({ interleaved: false, useDevicePixels: false }))
+function DeckGLOverlay({ layers, onDeviceInitialized }) {
+  // MapboxOverlay builds its Deck in onAdd from the constructor props, so the
+  // device callback must be passed here, not later through setProps.
+  const overlay = useControl(
+    () => new MapboxOverlay({ interleaved: false, useDevicePixels: false, onDeviceInitialized })
+  )
   overlay.setProps({ layers })
   return null
 }
@@ -45,6 +49,11 @@ function useFrameTime() {
 export function MapView({ layerData, heatmapComputeMs }) {
   const { viewport, setViewport, layerVisibility, setSelectedFeature } = useMapStore()
   const gpuBase = useGPUCapabilities()
+  const [renderDevice, setRenderDevice] = useState(null)
+  const onDeviceInitialized = useCallback(
+    (device) => setRenderDevice({ type: device.type, renderer: device.info?.renderer }),
+    []
+  )
   const { frameTime, frameHistory } = useFrameTime()
   const { throughput: gpuThroughput, supported: benchSupported, running: benchRunning, run: runBenchmark } =
     useGPUCompute()
@@ -55,8 +64,8 @@ export function MapView({ layerData, heatmapComputeMs }) {
     (layerData.stressPoints?.length ?? 0)
 
   const capabilities = useMemo(
-    () => ({ ...gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
-    [gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
+    () => ({ ...gpuBase, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
+    [gpuBase, renderDevice, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
   )
 
   const benchmark = useMemo(
@@ -82,7 +91,7 @@ export function MapView({ layerData, heatmapComputeMs }) {
         mapStyle={BASEMAP_STYLE}
         onMove={(evt) => setViewport(evt.viewState)}
       >
-        <DeckGLOverlay layers={layers} />
+        <DeckGLOverlay layers={layers} onDeviceInitialized={onDeviceInitialized} />
       </Map>
       <div className="map-vignette" />
       <GPUInfoPanel capabilities={capabilities} benchmark={benchmark} />

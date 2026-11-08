@@ -588,6 +588,9 @@ body::before {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* The width cap can wrap the panel at any width, so separators are hidden
+     everywhere and a column gap spaces the items; a wrapped row never ends in one. */
+  column-gap: 14px;
   padding: 6px 14px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -595,7 +598,9 @@ body::before {
   font-size: 10px;
   letter-spacing: 0.11em;
   pointer-events: none;
-  max-width: calc(100vw - 32px);
+  /* Keep clear of the 288px popup at left: 20px at every width; the
+     narrow-screen block below widens it again, where the popup is a sheet. */
+  max-width: calc(100vw - 340px);
   flex-wrap: wrap;
   row-gap: 4px;
 }
@@ -637,7 +642,18 @@ body::before {
   color: var(--red);
 }
 
+/* The GPU name can be a long WebGL renderer string; the full text is in title.
+   It opts back into pointer input (the panel ignores it) so the title shows on hover. */
+.gpu-info-name {
+  pointer-events: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 32ch;
+}
+
 .gpu-info-sep {
+  display: none;
   color: var(--text-dim);
 }
 

@@ -18,7 +18,7 @@ describe('GPUInfoPanel RUN control and the detected tier', () => {
   it.each(['no-webgpu', 'unknown'])('hides the RUN button when the tier is %s', (tier) => {
     render(<GPUInfoPanel capabilities={{ ...base, tier }} benchmark={benchmark} />)
     expect(screen.queryByRole('button', { name: 'Run compute benchmark' })).not.toBeInTheDocument()
-    expect(screen.getByText('COMPUTE').closest('.gpu-info-item')).toHaveTextContent('--')
+    expect(screen.getByText('WEBGPU COMPUTE').closest('.gpu-info-item')).toHaveTextContent('--')
   })
 
   it('shows the RUN button when the tier is webgpu', () => {
