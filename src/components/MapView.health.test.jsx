@@ -47,6 +47,9 @@ vi.mock('../hooks/useGPUCompute.js', () => ({ useGPUCompute: () => COMPUTE }))
 import { MapView } from './MapView.jsx'
 
 const layerData = { airports: [], ports: [], stressPoints: [] }
+// MapLibre fires its own error events with the map as target; react-maplibre
+// uses target: null only when the map itself could not be created.
+const MAP = { id: 'maplibre-map' }
 const renderVal = () => screen.getByText('RENDER').closest('.gpu-info-item').querySelector('.gpu-info-val')
 
 function deferred() {
@@ -129,7 +132,7 @@ describe('MapView basemap health', () => {
   it('shows the fallback message when the style fails before load', () => {
     render(<MapView layerData={layerData} heatmapComputeMs={null} />)
     expect(fallback()).not.toBeInTheDocument()
-    act(() => mapProps.current.onError({ type: 'error', error: new Error('style 404') }))
+    act(() => mapProps.current.onError({ type: 'error', target: MAP, error: new Error('style 404') }))
     expect(fallback()).toBeInTheDocument()
     expect(screen.getByText('DATA LAYERS STILL SHOWN')).toBeInTheDocument()
     expect(fallback().closest('[role="status"]')).toHaveClass('basemap-fallback')
@@ -138,7 +141,7 @@ describe('MapView basemap health', () => {
 
   it('ignores tile and source errors', () => {
     render(<MapView layerData={layerData} heatmapComputeMs={null} />)
-    act(() => mapProps.current.onError({ type: 'error', error: new Error('tile 503'), sourceId: 'carto' }))
+    act(() => mapProps.current.onError({ type: 'error', target: MAP, error: new Error('tile 503'), sourceId: 'carto' }))
     expect(fallback()).not.toBeInTheDocument()
     expect(useMapStore.getState().basemapFailed).toBe(false)
   })
@@ -146,14 +149,14 @@ describe('MapView basemap health', () => {
   it('ignores errors after the map has loaded', () => {
     render(<MapView layerData={layerData} heatmapComputeMs={null} />)
     act(() => mapProps.current.onLoad({ type: 'load' }))
-    act(() => mapProps.current.onError({ type: 'error', error: new Error('late glyph failure') }))
+    act(() => mapProps.current.onError({ type: 'error', target: MAP, error: new Error('late glyph failure') }))
     expect(fallback()).not.toBeInTheDocument()
     expect(useMapStore.getState().basemapFailed).toBe(false)
   })
 
   it('clears the failure on load', () => {
     render(<MapView layerData={layerData} heatmapComputeMs={null} />)
-    act(() => mapProps.current.onError({ type: 'error', error: new Error('sprite 404') }))
+    act(() => mapProps.current.onError({ type: 'error', target: MAP, error: new Error('sprite 404') }))
     expect(fallback()).toBeInTheDocument()
     act(() => mapProps.current.onLoad({ type: 'load' }))
     expect(fallback()).not.toBeInTheDocument()
