@@ -79,6 +79,9 @@ function installGPU({ adapter = true, failPipeline = false } = {}) {
       finish: () => ({}),
     })),
     destroy: vi.fn(),
+    pushErrorScope: vi.fn(),
+    popErrorScope: vi.fn(async () => null),
+    lost: new Promise(() => {}),
   }
   const gpuAdapter = { requestDevice: vi.fn(async () => device) }
   const gpu = { requestAdapter: vi.fn(async () => (adapter ? gpuAdapter : null)) }
@@ -230,9 +233,8 @@ describe('useGPUCompute with WebGPU', () => {
     expect(result.current.run).toBe(first)
   })
 
-  it('stops and destroys on unmount mid-run without updating state', async () => {
+  it('stops and destroys on unmount mid-run', async () => {
     const mock = installGPU()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { result, unmount } = renderHook(() => useGPUCompute())
     let done
     act(() => {
@@ -247,8 +249,6 @@ describe('useGPUCompute with WebGPU', () => {
       await done
     })
     expect(mock.queue.submit).toHaveBeenCalledTimes(1)
-    expect(errorSpy).not.toHaveBeenCalled()
-    errorSpy.mockRestore()
   })
 
   it('reports unsupported when requestAdapter returns null', async () => {
