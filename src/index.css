@@ -588,6 +588,9 @@ body::before {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* The width cap can wrap the panel at any width, so separators are hidden
+     everywhere and a column gap spaces the items; a wrapped row never ends in one. */
+  column-gap: 14px;
   padding: 6px 14px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -650,6 +653,7 @@ body::before {
 }
 
 .gpu-info-sep {
+  display: none;
   color: var(--text-dim);
 }
 
