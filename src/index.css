@@ -639,8 +639,10 @@ body::before {
   color: var(--red);
 }
 
-/* The GPU name can be a long WebGL renderer string; the full text is in title. */
+/* The GPU name can be a long WebGL renderer string; the full text is in title.
+   It opts back into pointer input (the panel ignores it) so the title shows on hover. */
 .gpu-info-name {
+  pointer-events: auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
