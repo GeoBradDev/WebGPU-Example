@@ -1,16 +1,17 @@
 // Pure label helpers for the GPU info panel (issue #8).
 
-const BACKEND_LABELS = {
-  webgl: 'WebGL2', // luma.gl's WebGL2 device reports type 'webgl'
-  webgl2: 'WebGL2',
-  webgpu: 'WebGPU',
-}
+// A Map, not a plain object, so names like '__proto__' or 'toString' miss.
+const BACKEND_LABELS = new Map([
+  ['webgl', 'WebGL2'], // luma.gl's WebGL2 device reports type 'webgl'
+  ['webgl2', 'WebGL2'],
+  ['webgpu', 'WebGPU'],
+])
 
 // RENDER names the luma.gl device type deck.gl actually created. It never
 // looks at the WebGPU adapter tier.
 export function renderBackendLabel(deviceType) {
   if (!deviceType) return { text: 'Detecting...', ok: false }
-  const text = BACKEND_LABELS[deviceType]
+  const text = BACKEND_LABELS.get(deviceType)
   return text ? { text, ok: true } : { text: 'Unknown', ok: false }
 }
 

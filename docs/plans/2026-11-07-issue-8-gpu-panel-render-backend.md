@@ -16,7 +16,7 @@ Report the truth. Do not wire WebGPU rendering. RENDER reads the device type dec
 
 ## Acceptance criteria
 
-1. RENDER shows the backend deck.gl actually uses: the luma.gl device type passed to deck's `onDeviceInitialized` callback. `webgl` (luma.gl's WebGL2 device; `webgl2` is accepted as an alias) shows `WebGL2`, `webgpu` shows `WebGPU`. Before deck has initialized its device, RENDER shows `Detecting...`. Any other non-empty type shows `Unknown`.
+1. RENDER shows the backend deck.gl actually uses: the luma.gl device type passed to deck's `onDeviceInitialized` callback. `webgl` (luma.gl's WebGL2 device; `webgl2` is accepted as an alias) shows `WebGL2`, `webgpu` shows `WebGPU`. Before deck has initialized its device, RENDER shows `Detecting...`. Any other non-empty type shows `Unknown`, including names of `Object.prototype` members such as `__proto__`, `toString`, and `constructor` (the lookup is a `Map`, not a plain object).
 2. The WebGPU adapter tier (`webgpu`, `no-webgpu`, `unknown`) never decides the RENDER text. With tier `webgpu` and a `webgl` device, RENDER shows `WebGL2`. The strings `WebGL Fallback` and the tier-derived `WebGPU` RENDER label are gone.
 3. RENDER value class: `ok` when the device type is `webgl`/`webgl2`/`webgpu`, `warn` while detecting or unknown.
 4. The compute item's key reads `WEBGPU COMPUTE` (was `COMPUTE`), so WebGPU compute availability reads apart from RENDER. Its behavior from #11 is unchanged: `--` and no RUN button unless the tier is `webgpu` and the benchmark is supported; the RUN button's accessible name stays `Run compute benchmark`; the value stays a polite live region.
@@ -29,6 +29,7 @@ Report the truth. Do not wire WebGPU rendering. RENDER reads the device type dec
 
 - `src/components/gpuLabels.js` (new): pure helpers `renderBackendLabel(deviceType)` returning `{ text, ok }` (or two functions, implementer's choice), and `gpuDeviceLabel(adapterInfo, renderInfo)`. No React.
 - `src/components/gpuLabels.test.js` (new): unit tests for both helpers (AC1, AC5).
+- `src/components/gpuLabels.protoKeys.test.js` (new, review fix B1): `renderBackendLabel` returns `Unknown`, not ok, for prototype member names (AC1).
 - `src/components/GPUInfoPanel.jsx`: read `renderDevice` from `capabilities` (`{ type, renderer }` or null/undefined; must be optional so existing tests that omit it render `Detecting...`). RENDER text and class from `renderBackendLabel(renderDevice?.type)`. GPU text from `gpuDeviceLabel(adapterInfo, renderDevice)`. Compute key text `WEBGPU COMPUTE`. `isWebGPU` (tier) keeps gating only the RUN button.
 - `src/components/GPUInfoPanel.test.jsx` and `src/components/GPUInfoPanel.benchmarkTier.test.jsx`: change `getByText('COMPUTE')` lookups and the `'COMPUTE'` entry in the secondary-key loop to `'WEBGPU COMPUTE'`; add panel tests for AC1 to AC3 (incl. tier `webgpu` + device `webgl`).
 - `src/components/MapView.jsx`: `const [renderDevice, setRenderDevice] = useState(null)`. A stable `useCallback` `(device) => setRenderDevice({ type: device.type, renderer: device.info?.renderer })`. `DeckGLOverlay` takes `onDeviceInitialized` and passes it in the `MapboxOverlay` constructor props (the overlay creates its `Deck` in `onAdd` from those props, so it must be there at construction; `setProps({ layers })` keeps it). Add `renderDevice` to the `capabilities` memo and its deps.
@@ -58,7 +59,7 @@ Report the truth. Do not wire WebGPU rendering. RENDER reads the device type dec
 
 ## Proof
 
-- AC1, AC3, AC5: `src/components/gpuLabels.test.js` and the new panel tests.
+- AC1, AC3, AC5: `src/components/gpuLabels.test.js`, `src/components/gpuLabels.protoKeys.test.js`, and the new panel tests.
 - AC2: panel test with tier `webgpu` and device `webgl`.
 - AC4, AC7: existing panel and benchmark tier tests (key text updated), `src/styles.test.js`.
 - AC6: `src/components/MapView.test.jsx`.
