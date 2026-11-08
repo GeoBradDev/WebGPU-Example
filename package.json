@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "data:airports": "node scripts/build-airports.mjs"
   },
   "dependencies": {
     "@deck.gl/layers": "^9.4.1",

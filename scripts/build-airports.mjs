@@ -1,0 +1,61 @@
+// Builds public/data/airports.json and public/data/airports.meta.json from the
+// OurAirports airports.csv at a pinned upstream commit (issue #9).
+//
+// Run locally with `npm run data:airports` (needs network, Node 20+).
+// CI never runs this script; the generated files are committed.
+
+import { writeFile, mkdir } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+import { transformAirports } from './airports-transform.js'
+
+export const SOURCE_REPO = 'davidmegginson/ourairports-data'
+export const SOURCE_SHA = '64af12951161ed52bc733eb4101224643c48850a'
+export const SOURCE_URL = `https://raw.githubusercontent.com/${SOURCE_REPO}/${SOURCE_SHA}/airports.csv`
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const OUT_DIR = resolve(ROOT, 'public/data')
+const DATA_PATH = resolve(OUT_DIR, 'airports.json')
+const META_PATH = resolve(OUT_DIR, 'airports.meta.json')
+
+async function main() {
+  console.log(`Fetching ${SOURCE_URL}`)
+  const res = await fetch(SOURCE_URL)
+  if (res.status !== 200) {
+    throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
+  }
+  const csvText = await res.text()
+  const sourceBytes = Buffer.byteLength(csvText, 'utf8')
+
+  const { data, counts } = transformAirports(csvText)
+  const json = JSON.stringify(data)
+  const outputBytes = Buffer.byteLength(json, 'utf8')
+
+  const meta = {
+    source: 'OurAirports',
+    sourceUrl: SOURCE_URL,
+    repo: `https://github.com/${SOURCE_REPO}`,
+    commit: SOURCE_SHA,
+    fetchedAt: new Date().toISOString().slice(0, 10),
+    license: 'Public domain (OurAirports data)',
+    licenseUrl: 'https://ourairports.com/data/',
+    counts,
+    rounding: '3 decimal places',
+    bytes: { source: sourceBytes, output: outputBytes },
+  }
+
+  await mkdir(OUT_DIR, { recursive: true })
+  await writeFile(DATA_PATH, json)
+  await writeFile(META_PATH, JSON.stringify(meta, null, 2) + '\n')
+
+  console.log(`Wrote ${DATA_PATH} (${outputBytes} bytes, ${counts.included} airports)`)
+  console.log(`Wrote ${META_PATH}`)
+  console.log(JSON.stringify(counts, null, 2))
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err)
+    process.exitCode = 1
+  })
+}
