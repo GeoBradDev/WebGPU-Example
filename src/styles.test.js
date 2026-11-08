@@ -295,3 +295,51 @@ describe('reduced motion (WCAG 2.3.3)', () => {
     expect(d.transition).toBe('none !important')
   })
 })
+
+// Rules outside every @media block: what applies above 1024px wide.
+function topLevelCss() {
+  let out = ''
+  let i = 0
+  while (i < css.length) {
+    const at = css.indexOf('@media', i)
+    if (at === -1) return out + css.slice(i)
+    out += css.slice(i, at)
+    let depth = 0
+    let j = css.indexOf('{', at)
+    for (; j < css.length; j++) {
+      if (css[j] === '{') depth++
+      else if (css[j] === '}' && --depth === 0) break
+    }
+    i = j + 1
+  }
+  return out
+}
+
+function topLevelRule(selector) {
+  const found = innermostRules(topLevelCss()).filter((r) => r.selector === selector)
+  if (found.length === 0) throw new Error(`top-level rule not found: ${selector}`)
+  return found.map((r) => declarations(r.body)).reduce((a, b) => ({ ...a, ...b }), {})
+}
+
+// Issue #8: a long GPU name (the WebGL renderer string) must not stretch the
+// panel over the 288px feature popup at left: 20px.
+describe('GPU panel clears the feature popup above 1024px', () => {
+  it('truncates the GPU name with an ellipsis', () => {
+    const d = topLevelRule('.gpu-info-name')
+    expect(d['white-space']).toBe('nowrap')
+    expect(d.overflow).toBe('hidden')
+    expect(d['text-overflow']).toBe('ellipsis')
+    expect(d['max-width']).toBe('32ch')
+  })
+
+  it('caps the panel width so it never reaches the popup right edge', () => {
+    expect(topLevelRule('.gpu-info-panel')['max-width']).toBe('calc(100vw - 340px)')
+  })
+
+  it('keeps the 1024px and 640px panel widths from issue #5', () => {
+    const tablet = innermostRules(mediaBlock('@media (max-width: 1024px)')).find((r) => r.selector === '.gpu-info-panel')
+    expect(declarations(tablet.body)['max-width']).toBe('calc(100vw - 340px)')
+    const narrow = innermostRules(mediaBlock('@media (max-width: 640px)')).find((r) => r.selector === '.gpu-info-panel')
+    expect(declarations(narrow.body)['max-width']).toBe('calc(100vw - 32px)')
+  })
+})
