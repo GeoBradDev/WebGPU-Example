@@ -46,7 +46,8 @@ export function MapView({ layerData, heatmapComputeMs }) {
   const { viewport, setViewport, layerVisibility, setSelectedFeature } = useMapStore()
   const gpuBase = useGPUCapabilities()
   const { frameTime, frameHistory } = useFrameTime()
-  const { throughput: gpuThroughput } = useGPUCompute()
+  const { throughput: gpuThroughput, supported: benchSupported, running: benchRunning, run: runBenchmark } =
+    useGPUCompute()
 
   const activePointCount =
     (layerVisibility.airports ? (layerData.airports?.length ?? 0) : 0) +
@@ -56,6 +57,11 @@ export function MapView({ layerData, heatmapComputeMs }) {
   const capabilities = useMemo(
     () => ({ ...gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs }),
     [gpuBase, activePointCount, frameTime, frameHistory, gpuThroughput, heatmapComputeMs]
+  )
+
+  const benchmark = useMemo(
+    () => ({ supported: benchSupported, running: benchRunning, onRun: runBenchmark }),
+    [benchSupported, benchRunning, runBenchmark]
   )
 
   const onFeatureClick = useCallback(
@@ -79,7 +85,7 @@ export function MapView({ layerData, heatmapComputeMs }) {
         <DeckGLOverlay layers={layers} />
       </Map>
       <div className="map-vignette" />
-      <GPUInfoPanel capabilities={capabilities} />
+      <GPUInfoPanel capabilities={capabilities} benchmark={benchmark} />
     </div>
   )
 }

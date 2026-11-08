@@ -161,6 +161,8 @@ const TEXT_PAIRS = [
   { selector: '.gpu-info-val.warn', bg: 'overMap' },
   { selector: '.gpu-info-val.err', bg: 'overMap' },
   { selector: '.gpu-info-sep', bg: 'overMap' },
+  { selector: '.gpu-bench-btn', bg: 'overMap' },
+  { selector: ".gpu-bench-btn[aria-disabled='true']", bg: 'overMap' },
 ]
 
 function textRatio({ selector, bg, fg }) {
@@ -260,6 +262,12 @@ describe('target size (WCAG 2.5.8, 24x24)', () => {
     const d = rule('.popup-close')
     expect(px(d.width)).toBeGreaterThanOrEqual(24)
     expect(px(d.height)).toBeGreaterThanOrEqual(24)
+  })
+
+  it('compute benchmark RUN button is at least 24x24', () => {
+    const d = rule('.gpu-bench-btn')
+    expect(px(d['min-width'])).toBeGreaterThanOrEqual(24)
+    expect(px(d['min-height'])).toBeGreaterThanOrEqual(24)
   })
 
   it('stress slider input is at least 24px tall', () => {
