@@ -5,6 +5,9 @@ const LARGE_AIRPORT_RADIUS_M = 12000
 const MEDIUM_AIRPORT_RADIUS_M = 6000
 const AIRPORT_RADIUS_MIN_PIXELS = 1.5
 const AIRPORT_RADIUS_MAX_PIXELS = 8
+const PORT_RADIUS_M = 6000
+const PORT_RADIUS_MIN_PIXELS = 2
+const PORT_RADIUS_MAX_PIXELS = 8
 
 function getAirportRadius(d) {
   return d.type === 'large_airport' ? LARGE_AIRPORT_RADIUS_M : MEDIUM_AIRPORT_RADIUS_M
@@ -64,8 +67,12 @@ export function buildLayers(layerVisibility, data, onFeatureClick) {
         id: 'ports',
         data: data.ports ?? [],
         getPosition: (d) => [d.lon, d.lat],
-        getRadius: 5,
-        radiusUnits: 'pixels',
+        // Same treatment as airports (issue #9): small at zoom 2 so country
+        // labels stay legible, clickable when zoomed in.
+        getRadius: PORT_RADIUS_M,
+        radiusUnits: 'meters',
+        radiusMinPixels: PORT_RADIUS_MIN_PIXELS,
+        radiusMaxPixels: PORT_RADIUS_MAX_PIXELS,
         getFillColor: [0, 255, 140, 200],
         pickable: true,
         onClick: ({ object }) => object && onFeatureClick({ properties: object }),
