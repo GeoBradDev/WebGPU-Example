@@ -14,6 +14,7 @@ Domain skills:
 1. Every text color/background pair actually used in `src/index.css` meets 4.5:1 (all text here is under 18.66px bold / 24px, so the large-text 3:1 exception never applies). Backgrounds are modeled as rendered:
    - Header (`.app-header`, not over the map): `--bg-panel` composited over `--bg-void`.
    - Layer panel, GPU panel, popup rows (all float over the map canvas, which can show anything): `--bg-panel` composited over `#ffffff`, the worst case.
+   - Hovered layer row (every text inside a `.layer-row`, and the off dot at 3:1): `--accent-glow` (the `.layer-row:hover` background) composited over `--bg-panel` over `#ffffff`.
    - Popup header (opaque): `--bg-deep`.
    - Classification badge: `--bg-void` text on `--accent`.
    - Text with `opacity` is composited at that opacity before measuring.
@@ -26,7 +27,8 @@ Domain skills:
 
 ## Decisions
 
-- `--text-dim`: `#2d5a42` -> `#4f9170`. It is the smallest step along the line from the current value toward `--text-primary` (`#6ec49a`, same hue family) that clears 4.5:1 with margin on the worst-case background: about 4.66:1 on `--bg-panel` over white, 5.26:1 on `--bg-deep`. (The issue's suggested `#5f9c7c` gives about 6.1:1, more than needed.) Confirm the numbers in the test; if any pair lands under 4.5, step further along the same line and record the value here.
+- `--text-dim`: `#2d5a42` -> `#5aa37f`. It is the smallest step along the line from the original value toward `--text-primary` (`#6ec49a`, same hue family, t=0.69) that clears 4.5:1 on every background once the hover state is in scope. The first value, `#4f9170`, passed the resting pairs (4.66:1 on `--bg-panel` over white) but review found a hovered OFF row puts `.layer-toggle.off` on `--accent-glow` over the panel, which is 3.72:1 over white. A token step was chosen over a new hover `color:` rule, which the coverage check in `src/styles.test.js` would (correctly) reject without a table entry. Numbers for `#5aa37f`: hovered row over white 4.62:1, `--bg-panel` over white 5.79:1, `--bg-deep` 6.53:1, header 6.55:1; `--text-primary` is still 1.44:1 brighter. (The issue's suggested `#5f9c7c` gives about 6.1:1 on the panel.)
+- MapLibre attribution: no change. Review raised the non-compact bar (50% white, links `rgba(0, 0, 0, 0.75)`, about 4.1:1 over black), but MapLibre 6 defaults `compact: true` (`defaultAttributionControlOptions` in `maplibre-gl-dev.mjs`), so with this app's config only the compact control renders: opaque `#fff`, text `#000` (21:1), links `rgba(0, 0, 0, 0.75)` (10.4:1), confirmed in the live drive at 1440 and 375.
 - `.gpu-info-sep` loses `opacity: 0.5`: at half opacity even the new dim is about 2.3:1. It shows only above 1024px.
 - No other text color changes: `--text-primary`, `--text-bright`, `--accent`, `--amber`, `--red` (about 4.8:1 worst case), `--blue` all already pass; the test proves it.
 - 12px minimum font size (the issue's "consider"): not done. Raising the 8 to 11px text (badge, status, GPU panel, panel labels) would undo the 641px header spacing and the GPU panel widths that #5 tuned. Noted in the PR as a follow-up.
@@ -34,7 +36,7 @@ Domain skills:
 ## Files that change
 
 - `src/index.css`:
-  - `:root`: `--text-dim: #4f9170`.
+  - `:root`: `--text-dim: #5aa37f` (first `#4f9170`; stepped further for the hovered row, see Decisions).
   - `.gpu-info-sep`: remove `opacity: 0.5`.
   - `.popup-close`: `width: 24px; height: 24px` (was 20). Nothing else in the rule changes.
   - `.stress-slider`: `height: 24px; background: transparent` (the input box becomes the 24px-tall hit area). Draw the visible track with `::-webkit-slider-runnable-track { height: 4px; background: var(--text-dim) }` and `::-moz-range-track { height: 4px; background: var(--text-dim) }` (4px, up from 2px, for visibility).
@@ -55,6 +57,7 @@ Domain skills:
   - `.popup-close` width and height >= 24px; `.stress-slider` height >= 24px; both thumb pseudo-element rules width and height >= 24px;
   - the `@media (prefers-reduced-motion: reduce)` block exists and sets `animation: none !important` and `transition: none !important` on `*`;
   - a sanity check of the contrast function itself: black on white is 21:1, and the old `#2d5a42` on `#020c18` is about 2.48:1 (matches the issue).
+- `src/styles.states.test.js` (new, added after review; `src/styles.test.js` stays unchanged): models the hovered-row background and asserts every text inside a `.layer-row` (`.layer-label`, `.layer-row.active .layer-label`, `.layer-toggle.on`, `.layer-toggle.off`, each with any hover override) at 4.5:1 and the off dot at 3:1; fails if any rule whose selector has `:hover`, `:focus`, `:focus-visible`, `:active`, or `:has(` sets `background`/`background-color` without being in its state-background table.
 - `README.md`: only if a line becomes false (none expected). Phase 8 checks.
 
 ## Order of work
